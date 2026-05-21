@@ -9,11 +9,55 @@ public class APIService
     //static private string ipV4 = "10.153.54.75";
     static private string IP_Casa = "192.168.178.23";
     static private string IP_HotSpot = "10.153.54.75";
+    private string originUrl = $"http://{IP_HotSpot}:5000/api/worldorigin";
     private string datiUrl = $"http://{IP_HotSpot}:5000/dati";
     private string shelfUrl = $"http://{IP_HotSpot}:5000/shelf";
 
     // =========================
-    // GET ALL
+    // GET WORLD ORIGIN
+    // =========================
+    public async Task<WorldOrigin> GetWorldOrigin()
+    {
+        using var client = UnityWebRequest.Get(originUrl);
+
+        var op = client.SendWebRequest();
+        while (!op.isDone) await Task.Yield();
+
+        if (client.result != UnityWebRequest.Result.Success)
+        {
+            Debug.Log("No world origin yet");
+            return null;
+        }
+
+        return JsonUtility.FromJson<WorldOrigin>(
+            client.downloadHandler.text
+        );
+    }
+
+    // =========================
+    // SET WORLD ORIGIN
+    // =========================
+    public async Task SetWorldOrigin(WorldOrigin dto)
+    {
+        string json = JsonUtility.ToJson(dto);
+
+        using var client = new UnityWebRequest(originUrl, "POST");
+
+        byte[] body = Encoding.UTF8.GetBytes(json);
+
+        client.uploadHandler = new UploadHandlerRaw(body);
+        client.downloadHandler = new DownloadHandlerBuffer();
+        client.SetRequestHeader("Content-Type", "application/json");
+
+        var op = client.SendWebRequest();
+        while (!op.isDone) await Task.Yield();
+
+        if (client.result != UnityWebRequest.Result.Success)
+            Debug.LogError(client.error);
+    }
+
+    // =========================
+    // GET ALL ARTIFACTS
     // =========================
     public async Task<List<Artifact>> GetAllArtifactsAsync()
     {
@@ -168,7 +212,9 @@ public class APIService
         }
     }
 
-
+    // =========================
+    // GET ALL SHELVES
+    // =========================
     public async Task<List<StorageContainer>> GetShelves()
     {
         using var client =
@@ -195,6 +241,9 @@ public class APIService
         return wrapper.items;
     }
 
+    // =========================
+    // UPDATE SHELF BY ID
+    // =========================
     public async Task UpdateShelf(StorageContainer shelf)
     {
         string json = JsonUtility.ToJson(shelf);

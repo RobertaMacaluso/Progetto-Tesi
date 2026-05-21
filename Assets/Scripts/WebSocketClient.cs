@@ -14,6 +14,7 @@ public class WebSocketClient : MonoBehaviour
     private string IP_HotSpot = "10.153.54.75";
 
     public AppManager manager;
+    public WorldOriginBootstrap worldOriginBootstrap;
 
     async void Start()
     {
@@ -81,6 +82,18 @@ public class WebSocketClient : MonoBehaviour
 
             switch (baseMsg.eventType)
             {
+                //WORLD ORIGIN UPDATE
+                case "worldorigin_update":
+                    {
+                        Debug.Log("WebSocket world origin update");
+
+                        WorldOrigin origin =
+                            JsonUtility.FromJson<WorldOrigin>(json);
+
+                        worldOriginBootstrap.ApplyWorldOrigin(origin);
+                        break;
+                    }
+
                 //DELETE
                 case "delete":
 
