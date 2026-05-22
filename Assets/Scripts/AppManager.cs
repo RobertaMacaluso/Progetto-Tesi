@@ -117,6 +117,7 @@ public class AppManager : MonoBehaviour
     async void Start()
     {
         WorldLockingManager.GetInstance().Load();
+        // commento per commit pre opencv-hololens
 
         apiService = new APIService();
 
