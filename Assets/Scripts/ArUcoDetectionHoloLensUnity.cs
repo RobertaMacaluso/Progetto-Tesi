@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using TMPro;
+using Unity.XR.CoreUtils;
+
 
 #if UNITY_EDITOR
 using UnityEditor;
@@ -207,6 +209,7 @@ namespace ArUcoDetectionHoloLensUnity
         private IEnumerator DelayCoroutine()
         {
             yield return new WaitForSeconds(2f);
+            //Debug.Log("XR Origin: " + FindObjectOfType<XROrigin>().transform.position);
         }
 
         private async Task StartHoloLensMediaFrameSourceGroups()
@@ -406,22 +409,54 @@ namespace ArUcoDetectionHoloLensUnity
             }
         }
 
-        private Matrix4x4 GetMarkerWorldTransform(DetectedArUcoMarker detectedMarker)
-        {
-            Vector3 position = CvUtils.Vec3FromFloat3(detectedMarker.Position);
-            position.y *= -1f;
+        //private Matrix4x4 GetMarkerWorldTransform(DetectedArUcoMarker detectedMarker)
+        //{
+        //    Vector3 position = CvUtils.Vec3FromFloat3(detectedMarker.Position);
+        //    /*//position = new Vector3(
+        //    //    position.z,
+        //    //    position.y,
+        //    //    position.x
+        //    //);
+        //    position.z *= -1f;*/
 
-            Quaternion rotation =
-                CvUtils.RotationQuatFromRodrigues(
-                    CvUtils.Vec3FromFloat3(detectedMarker.Rotation));
+        //    //position = new Vector3(
+        //    //    position.z,
+        //    //    position.y,
+        //    //    position.x
+        //    //);
+        //    //position.x *= -1f;
+        //    position.y *= -1f;
+        //    //position.z *= -1f;
 
-            Matrix4x4 cameraToWorldUnity =
-                CvUtils.Mat4x4FromFloat4x4(detectedMarker.CameraToWorldUnity);
+        //    Quaternion rotation =
+        //        CvUtils.RotationQuatFromRodrigues(
+        //            CvUtils.Vec3FromFloat3(detectedMarker.Rotation));
 
-            Matrix4x4 transformUnityCamera =
-                CvUtils.TransformInUnitySpace(position, rotation);
+        //    Matrix4x4 cameraToWorldUnity =
+        //        CvUtils.Mat4x4FromFloat4x4(detectedMarker.CameraToWorldUnity);
 
-            return cameraToWorldUnity * transformUnityCamera;
+        //    Matrix4x4 transformUnityCamera =
+        //        CvUtils.TransformInUnitySpace(position, rotation);
+
+        //    return cameraToWorldUnity * transformUnityCamera;
+        //}
+        private Matrix4x4 GetMarkerWorldTransform(DetectedArUcoMarker detectedMarker) 
+        { 
+            Vector3 position = CvUtils.Vec3FromFloat3(detectedMarker.Position); 
+            position.y *= -1f; 
+            
+            Quaternion rotation = 
+                CvUtils.RotationQuatFromRodrigues( 
+                    CvUtils.Vec3FromFloat3(detectedMarker.Rotation)); 
+            
+            Matrix4x4 cameraToWorldUnity = 
+                CvUtils.Mat4x4FromFloat4x4(
+                    detectedMarker.CameraToWorldUnity); 
+            
+            Matrix4x4 transformUnityCamera = 
+                CvUtils.TransformInUnitySpace(position, rotation); 
+            
+            return cameraToWorldUnity * transformUnityCamera; 
         }
 #endif
 
@@ -707,12 +742,12 @@ namespace ArUcoDetectionHoloLensUnity
                             return true;
                         }
 
-                        LogMessagesAboutMarker(
-                            "rejected",
-                            markers,
-                            inliers,
-                            averageMarker,
-                            averageInlierMarker);
+                        //LogMessagesAboutMarker(
+                        //    "rejected",
+                        //    markers,
+                        //    inliers,
+                        //    averageMarker,
+                        //    averageInlierMarker);
                     }
                 }
 

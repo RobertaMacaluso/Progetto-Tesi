@@ -7,6 +7,7 @@ namespace ArUcoDetectionHoloLensUnity
     public class ArUcoDebugVisualizer : MonoBehaviour
     {
         [SerializeField] private ArUcoMarkerDetection detector;
+        [SerializeField] private Camera cameraPlayer;
         [SerializeField] private TMP_Text debugText;
         [SerializeField] private GameObject markerGo;
         [SerializeField] private float markerSize = 0.08f;
@@ -69,7 +70,8 @@ namespace ArUcoDetectionHoloLensUnity
                     debugText.text =
                         $"Detected marker {marker.Id}\n" +
                         $"Position: {marker.Position}\n" +
-                        $"Rotation: {marker.Rotation}";
+                        $"Rotation: {marker.Rotation}\n \n" +
+                        $"Camera player position: {cameraPlayer.transform.position}";
                 }
 
                 break;
@@ -78,7 +80,7 @@ namespace ArUcoDetectionHoloLensUnity
 
         public void SetText(string txt)
         {
-            debugText.text += txt;
+            debugText.text += "\n \n" + txt;
         }
     }
 }
