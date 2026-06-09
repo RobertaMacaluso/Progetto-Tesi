@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
+using Microsoft.MixedReality.WorldLocking.Core;
 using TMPro;
 using Unity.XR.CoreUtils;
 
@@ -456,7 +457,27 @@ namespace ArUcoDetectionHoloLensUnity
             Matrix4x4 transformUnityCamera = 
                 CvUtils.TransformInUnitySpace(position, rotation); 
             
-            return cameraToWorldUnity * transformUnityCamera; 
+            Matrix4x4 markerSpongy =
+                cameraToWorldUnity * transformUnityCamera;
+
+            Pose frozenFromSpongy =
+                WorldLockingManager.GetInstance().FrozenFromSpongy;
+
+            Debug.Log(
+                "FrozenFromSpongy Pos = " +
+                frozenFromSpongy.position);
+
+            Debug.Log(
+                "FrozenFromSpongy Rot = " +
+                frozenFromSpongy.rotation.eulerAngles);
+
+            Matrix4x4 frozenMatrix =
+                Matrix4x4.TRS(
+                    frozenFromSpongy.position,
+                    frozenFromSpongy.rotation,
+                    Vector3.one);
+
+            return frozenMatrix * markerSpongy;
         }
 #endif
 

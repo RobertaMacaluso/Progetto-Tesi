@@ -32020,7 +32020,7 @@ PrefabInstance:
     - target: {fileID: 3712792914886690938, guid: 4d7e2f87fefe0ba468719b15288b46e7,
         type: 3}
       propertyPath: m_RequestedTrackingOriginMode
-      value: 3
+      value: 0
       objectReference: {fileID: 0}
     - target: {fileID: 3943983296962045976, guid: 4d7e2f87fefe0ba468719b15288b46e7,
         type: 3}
@@ -62091,6 +62091,11 @@ PrefabInstance:
     - target: {fileID: 4133740187393454, guid: f0777d53f35d4cb42827b5c3bdf227bd, type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 114794997547214612, guid: f0777d53f35d4cb42827b5c3bdf227bd,
+        type: 3}
+      propertyPath: m_Enabled
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 114794997547214612, guid: f0777d53f35d4cb42827b5c3bdf227bd,
         type: 3}
