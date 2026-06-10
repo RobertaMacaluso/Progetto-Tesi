@@ -88,6 +88,7 @@ public class AppManager : MonoBehaviour
     [SerializeField] public APIService apiService;
     [SerializeField] public GameObject globalRoot;
     [SerializeField] private GameObject homePanel;
+    [SerializeField] private GameObject markerPanel;
     //Shelves panel
     [SerializeField] private GameObject firstText;
     [SerializeField] private GameObject positionButton;
@@ -123,6 +124,7 @@ public class AppManager : MonoBehaviour
 
         SetGlobalRoot();
 
+        markerPanel.SetActive(false);
         shelvesListPanel.SetActive(false);
         positioningSphere.SetActive(false);
         sphereIndicator.SetActive(false);
@@ -189,6 +191,8 @@ public class AppManager : MonoBehaviour
         float maxDistance = 1f;
         float defaultDistance = 0.8f;
         float maxDegrees = 60f;
+        
+        // pannello home
         homePanel.GetComponentInChildren<Follow>().MoveLerpTime = speed;
         homePanel.GetComponentInChildren<Follow>().RotateLerpTime = speed;
         homePanel.GetComponentInChildren<Follow>().MinDistance = minDistance;
@@ -196,6 +200,8 @@ public class AppManager : MonoBehaviour
         homePanel.GetComponentInChildren<Follow>().DefaultDistance = defaultDistance;
         homePanel.GetComponentInChildren<Follow>().MaxViewHorizontalDegrees = maxDegrees;
         homePanel.GetComponentInChildren<Follow>().MaxViewVerticalDegrees = maxDegrees;
+
+        // pannello reperti
         A_Menu.artifactsPanel.GetComponentInChildren<Follow>().MoveLerpTime = speed;
         A_Menu.artifactsPanel.GetComponentInChildren<Follow>().RotateLerpTime = speed;
         A_Menu.artifactsPanel.GetComponentInChildren<Follow>().MinDistance = minDistance;
@@ -203,6 +209,8 @@ public class AppManager : MonoBehaviour
         A_Menu.artifactsPanel.GetComponentInChildren<Follow>().DefaultDistance = defaultDistance;
         A_Menu.artifactsPanel.GetComponentInChildren<Follow>().MaxViewHorizontalDegrees = maxDegrees;
         A_Menu.artifactsPanel.GetComponentInChildren<Follow>().MaxViewVerticalDegrees = maxDegrees;
+
+        // pannello scaffali
         shelvesListPanel.GetComponentInChildren<Follow>().MoveLerpTime = speed;
         shelvesListPanel.GetComponentInChildren<Follow>().RotateLerpTime = speed;
         shelvesListPanel.GetComponentInChildren<Follow>().MinDistance = minDistance;
@@ -210,6 +218,15 @@ public class AppManager : MonoBehaviour
         shelvesListPanel.GetComponentInChildren<Follow>().DefaultDistance = defaultDistance;
         shelvesListPanel.GetComponentInChildren<Follow>().MaxViewHorizontalDegrees = maxDegrees;
         shelvesListPanel.GetComponentInChildren<Follow>().MaxViewVerticalDegrees = maxDegrees;
+
+        // pannello marker
+        markerPanel.GetComponentInChildren<Follow>().MoveLerpTime = speed;
+        markerPanel.GetComponentInChildren<Follow>().RotateLerpTime = speed;
+        markerPanel.GetComponentInChildren<Follow>().MinDistance = minDistance;
+        markerPanel.GetComponentInChildren<Follow>().MaxDistance = maxDistance;
+        markerPanel.GetComponentInChildren<Follow>().DefaultDistance = defaultDistance;
+        markerPanel.GetComponentInChildren<Follow>().MaxViewHorizontalDegrees = maxDegrees;
+        markerPanel.GetComponentInChildren<Follow>().MaxViewVerticalDegrees = maxDegrees;
     }
 
     public void SetGlobalRoot()
@@ -1310,6 +1327,7 @@ public class AppManager : MonoBehaviour
                     if (lastShelvingUnit != -1)
                     {
                         A_Menu.depositButton.GetComponentInChildren<TextMeshProUGUI>().text = textDeposit;
+                        A_Menu.artifactText.GetComponent<TextMeshProUGUI>().text = artifactShelfNo;
                         A_Menu.artifactText.GetComponent<TextMeshProUGUI>().text += ".\n" + artifactShelfLast + " (" + spawnedShelves[lastShelvingUnit].name.ToString() + ")?";
                         A_Menu.depositInLastShelfButton.SetActive(true);
                     }

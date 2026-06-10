@@ -10,7 +10,7 @@ namespace ArUcoDetectionHoloLensUnity
     {
         [SerializeField] private ArUcoMarkerDetection detector;
         [SerializeField] private Camera cameraPlayer;
-        [SerializeField] private TMP_Text debugText;
+        [SerializeField] public TMP_Text detectingText;
         [SerializeField] private GameObject globalRoot;
         [SerializeField] private float markerSize = 0.08f;
         [SerializeField] private bool useAdditionalMarkers = false;
@@ -50,8 +50,8 @@ namespace ArUcoDetectionHoloLensUnity
         {
             if (markers == null || markers.Count == 0)
             {
-                if (debugText != null)
-                    debugText.text = "No marker detected.";
+                if (detectingText != null)
+                    detectingText.text = "Nessun marker trovato.";
 
                 return;
             }
@@ -70,13 +70,15 @@ namespace ArUcoDetectionHoloLensUnity
                     SaveInPlayerPrefs(marker.Position, marker.Rotation);
                 }
 
-                if (debugText != null)
+                if (detectingText != null)
                 {
-                    debugText.text =
-                        $"Detected marker {marker.Id}\n" +
-                        $"Position: {marker.Position}\n" +
-                        $"Rotation: {marker.Rotation}\n \n" +
-                        $"Camera player position: {cameraPlayer.transform.position}";
+                    //detectingText.text =
+                    //    $"Detected marker {marker.Id}\n" +
+                    //    $"Position: {marker.Position}\n" +
+                    //    $"Rotation: {marker.Rotation}\n \n" +
+                    //    $"Camera player position: {cameraPlayer.transform.position}";
+
+                    detectingText.text = "Marker trovato!\nContinua la scansione per qualche secondo per una migliore precisione";
                 }
 
                 break;
@@ -102,7 +104,7 @@ namespace ArUcoDetectionHoloLensUnity
 
         public void SetText(string txt)
         {
-            debugText.text += "\n \n" + txt;
+            detectingText.text += "\n \n" + txt;
         }
     }
 }
