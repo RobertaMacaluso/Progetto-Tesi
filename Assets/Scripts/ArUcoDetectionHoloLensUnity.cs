@@ -226,7 +226,7 @@ namespace ArUcoDetectionHoloLensUnity
                 
                 Debug.Log("StartHoloLensMediaFrameSourceGroups ENTER");
 
-                await Task.Delay(5000);
+                //await Task.Delay(5000);
 
                 Debug.Log("Creating SensorFrameStreamer");
 
@@ -410,37 +410,6 @@ namespace ArUcoDetectionHoloLensUnity
             }
         }
 
-        //private Matrix4x4 GetMarkerWorldTransform(DetectedArUcoMarker detectedMarker)
-        //{
-        //    Vector3 position = CvUtils.Vec3FromFloat3(detectedMarker.Position);
-        //    /*//position = new Vector3(
-        //    //    position.z,
-        //    //    position.y,
-        //    //    position.x
-        //    //);
-        //    position.z *= -1f;*/
-
-        //    //position = new Vector3(
-        //    //    position.z,
-        //    //    position.y,
-        //    //    position.x
-        //    //);
-        //    //position.x *= -1f;
-        //    position.y *= -1f;
-        //    //position.z *= -1f;
-
-        //    Quaternion rotation =
-        //        CvUtils.RotationQuatFromRodrigues(
-        //            CvUtils.Vec3FromFloat3(detectedMarker.Rotation));
-
-        //    Matrix4x4 cameraToWorldUnity =
-        //        CvUtils.Mat4x4FromFloat4x4(detectedMarker.CameraToWorldUnity);
-
-        //    Matrix4x4 transformUnityCamera =
-        //        CvUtils.TransformInUnitySpace(position, rotation);
-
-        //    return cameraToWorldUnity * transformUnityCamera;
-        //}
         private Matrix4x4 GetMarkerWorldTransform(DetectedArUcoMarker detectedMarker) 
         { 
             Vector3 position = CvUtils.Vec3FromFloat3(detectedMarker.Position); 
@@ -462,14 +431,6 @@ namespace ArUcoDetectionHoloLensUnity
 
             Pose frozenFromSpongy =
                 WorldLockingManager.GetInstance().FrozenFromSpongy;
-
-            Debug.Log(
-                "FrozenFromSpongy Pos = " +
-                frozenFromSpongy.position);
-
-            Debug.Log(
-                "FrozenFromSpongy Rot = " +
-                frozenFromSpongy.rotation.eulerAngles);
 
             Matrix4x4 frozenMatrix =
                 Matrix4x4.TRS(

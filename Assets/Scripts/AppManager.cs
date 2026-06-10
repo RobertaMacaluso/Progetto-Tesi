@@ -86,6 +86,7 @@ public class AppManager : MonoBehaviour
     //private int depositStep = 0;
 
     [SerializeField] public APIService apiService;
+    [SerializeField] public GameObject globalRoot;
     [SerializeField] private GameObject homePanel;
     //Shelves panel
     [SerializeField] private GameObject firstText;
@@ -119,6 +120,8 @@ public class AppManager : MonoBehaviour
         WorldLockingManager.GetInstance().Load();
 
         apiService = new APIService();
+
+        SetGlobalRoot();
 
         shelvesListPanel.SetActive(false);
         positioningSphere.SetActive(false);
@@ -209,27 +212,49 @@ public class AppManager : MonoBehaviour
         shelvesListPanel.GetComponentInChildren<Follow>().MaxViewVerticalDegrees = maxDegrees;
     }
 
+    public void SetGlobalRoot()
+    {
+        string globalRootTransform = PlayerPrefs.GetString(globalRoot.name);
+        if (!string.IsNullOrEmpty(globalRootTransform))
+        {
+            Debug.Log("SetGlobalRoot");
+
+            string[] transform = globalRootTransform.Split('/');
+            string[] localPosition = transform[0].Split('_');
+            string[] localRotation = transform[1].Split('_');
+
+            globalRoot.transform.SetPositionAndRotation(
+                new Vector3(float.Parse(localPosition[0], CultureInfo.InvariantCulture),
+                            float.Parse(localPosition[1], CultureInfo.InvariantCulture),
+                            float.Parse(localPosition[2], CultureInfo.InvariantCulture)),
+                new Quaternion(float.Parse(localRotation[0], CultureInfo.InvariantCulture),
+                               float.Parse(localRotation[1], CultureInfo.InvariantCulture),
+                               float.Parse(localRotation[2], CultureInfo.InvariantCulture),
+                               float.Parse(localRotation[3], CultureInfo.InvariantCulture)));
+        }
+    }
+
     //posiziona gli scaffali - chiamata nello start e da ResetShelfPosition
     public void SetInitialTransform(GameObject shelf)
     {
         //string shelfTransform = PlayerPrefs.GetString(shelfPP + shelf.GetComponent<StorageContainerView>().data.id.ToString());
-        string shelfTransform = shelf.GetComponent<StorageContainerView>().data.worldTransform;
-        if (!string.IsNullOrEmpty(shelfTransform))
+        string shelfTransformLocal = shelf.GetComponent<StorageContainerView>().data.worldTransform;
+        if (!string.IsNullOrEmpty(shelfTransformLocal))
         {
             //Debug.Log("Settaggio iniziale scaffale " + shelf.name);
 
-            string[] transform = shelfTransform.Split('/');
-            string[] position = transform[0].Split('_');
-            string[] rotation = transform[1].Split('_');
+            string[] transform = shelfTransformLocal.Split('/');
+            string[] localPosition = transform[0].Split('_');
+            string[] localRotation = transform[1].Split('_');
 
-            shelf.transform.SetPositionAndRotation(
-                new Vector3(float.Parse(position[0], CultureInfo.InvariantCulture),
-                            float.Parse(position[1], CultureInfo.InvariantCulture),
-                            float.Parse(position[2], CultureInfo.InvariantCulture)), 
-                new Quaternion(float.Parse(rotation[0], CultureInfo.InvariantCulture),
-                               float.Parse(rotation[1], CultureInfo.InvariantCulture),
-                               float.Parse(rotation[2], CultureInfo.InvariantCulture),
-                               float.Parse(rotation[3], CultureInfo.InvariantCulture)));
+            shelf.transform.SetLocalPositionAndRotation(
+                new Vector3(float.Parse(localPosition[0], CultureInfo.InvariantCulture),
+                            float.Parse(localPosition[1], CultureInfo.InvariantCulture),
+                            float.Parse(localPosition[2], CultureInfo.InvariantCulture)), 
+                new Quaternion(float.Parse(localRotation[0], CultureInfo.InvariantCulture),
+                               float.Parse(localRotation[1], CultureInfo.InvariantCulture),
+                               float.Parse(localRotation[2], CultureInfo.InvariantCulture),
+                               float.Parse(localRotation[3], CultureInfo.InvariantCulture)));
         }
     }
 
@@ -254,22 +279,22 @@ public class AppManager : MonoBehaviour
     //salva la nuova posizione dello scaffale che gli viene passato
     public async void SaveTransformObject(GameObject objectToSave)
     {
-        objectToSave.transform.GetPositionAndRotation(out var positionTemp, out var rotationTemp);
+        objectToSave.transform.GetLocalPositionAndRotation(out var localPositionTemp, out var localRotationTemp);
 
-        string objectPosition = positionTemp.x.ToString(CultureInfo.InvariantCulture) + "_" +
-            positionTemp.y.ToString(CultureInfo.InvariantCulture) + "_" +
-            positionTemp.z.ToString(CultureInfo.InvariantCulture);
+        string objectPositionLocal = localPositionTemp.x.ToString(CultureInfo.InvariantCulture) + "_" +
+            localPositionTemp.y.ToString(CultureInfo.InvariantCulture) + "_" +
+            localPositionTemp.z.ToString(CultureInfo.InvariantCulture);
 
-        string objectRotation = rotationTemp.x.ToString(CultureInfo.InvariantCulture) +"_" + 
-            rotationTemp.y.ToString(CultureInfo.InvariantCulture) + "_" + 
-            rotationTemp.z.ToString(CultureInfo.InvariantCulture) + "_" + 
-            rotationTemp.w.ToString(CultureInfo.InvariantCulture);
+        string objectRotationLocal = localRotationTemp.x.ToString(CultureInfo.InvariantCulture) +"_" + 
+            localRotationTemp.y.ToString(CultureInfo.InvariantCulture) + "_" + 
+            localRotationTemp.z.ToString(CultureInfo.InvariantCulture) + "_" + 
+            localRotationTemp.w.ToString(CultureInfo.InvariantCulture);
 
-        string objectTransform = objectPosition + "/" + objectRotation;
+        string objectTransformLocal = objectPositionLocal + "/" + objectRotationLocal;
         //PlayerPrefs.SetString(shelfPP + objectToSave.GetComponent<StorageContainerView>().data.id.ToString(), objectTransform);
         StorageContainer data = objectToSave.GetComponent<StorageContainerView>().data;
-        data.worldTransform = objectTransform;
-        Debug.Log("Salvataggio " + objectToSave.name + ": " + objectTransform);
+        data.worldTransform = objectTransformLocal;
+        Debug.Log("Salvataggio " + objectToSave.name + ": " + objectTransformLocal);
 
         await apiService.UpdateShelf(data);
 

@@ -91,14 +91,6 @@ namespace ArUcoDetectionHoloLensUnity
 
             return t;
         }
-        //public static Matrix4x4 TransformInUnitySpace(Vector3 v, Quaternion q)
-        //{
-        //    // OpenCV → Unity basis correction (standard)
-        //    Vector3 position = new Vector3(v.x, -v.y, v.z);
-        //    Quaternion rotation = new Quaternion(q.x, -q.y, -q.z, q.w);
-
-        //    return Matrix4x4.TRS(position, rotation, Vector3.one);
-        //}
 
         // Convert from system numerics to unity matrix 4x4
         public static Matrix4x4 Mat4x4FromFloat4x4(System.Numerics.Matrix4x4 m)
@@ -146,16 +138,6 @@ namespace ArUcoDetectionHoloLensUnity
 
             return q;
         }
-        //public static Quaternion RotationQuatFromRodrigues(Vector3 v)
-        //{
-        //    float angle = v.magnitude * Mathf.Rad2Deg;
-
-        //    if (v == Vector3.zero)
-        //        return Quaternion.identity;
-
-        //    Vector3 axis = v.normalized;
-        //    return Quaternion.AngleAxis(angle, axis);
-        //}
     }
 }
 

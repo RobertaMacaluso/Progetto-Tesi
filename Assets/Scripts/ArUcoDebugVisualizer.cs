@@ -1,5 +1,7 @@
 using System.Collections.Generic;
+using System.Globalization;
 using TMPro;
+using UnityEditor;
 using UnityEngine;
 
 namespace ArUcoDetectionHoloLensUnity
@@ -9,7 +11,7 @@ namespace ArUcoDetectionHoloLensUnity
         [SerializeField] private ArUcoMarkerDetection detector;
         [SerializeField] private Camera cameraPlayer;
         [SerializeField] private TMP_Text debugText;
-        [SerializeField] private GameObject markerGo;
+        [SerializeField] private GameObject globalRoot;
         [SerializeField] private float markerSize = 0.08f;
         [SerializeField] private bool useAdditionalMarkers = false;
 
@@ -18,8 +20,8 @@ namespace ArUcoDetectionHoloLensUnity
             if (detector == null)
                 detector = GetComponent<ArUcoMarkerDetection>();
 
-            if (markerGo != null)
-                markerGo.transform.localScale = new Vector3(markerSize, markerSize, markerSize);
+            if (globalRoot != null)
+                globalRoot.transform.localScale = new Vector3(markerSize, markerSize, markerSize);
         }
 
         private void OnEnable()
@@ -58,11 +60,14 @@ namespace ArUcoDetectionHoloLensUnity
             {
                 var marker = markerPair.Value;
 
-                if (markerGo != null)
+                if (globalRoot != null)
                 {
-                    markerGo.transform.SetPositionAndRotation(
+                    globalRoot.transform.SetPositionAndRotation(
                         marker.Position,
                         marker.Rotation);
+
+                    // Salvataggio transform marker nei PlayerPrefs
+                    SaveInPlayerPrefs(marker.Position, marker.Rotation);
                 }
 
                 if (debugText != null)
@@ -76,6 +81,23 @@ namespace ArUcoDetectionHoloLensUnity
 
                 break;
             }
+        }
+
+        public void SaveInPlayerPrefs(Vector3 markerPos, Quaternion markerRot)
+        {
+            string positionLocal = markerPos.x.ToString(CultureInfo.InvariantCulture) + "_" +
+                markerPos.y.ToString(CultureInfo.InvariantCulture) + "_" +
+                markerPos.z.ToString(CultureInfo.InvariantCulture);
+
+            string rotationLocal = markerRot.x.ToString(CultureInfo.InvariantCulture) + "_" +
+                markerRot.y.ToString(CultureInfo.InvariantCulture) + "_" +
+                markerRot.z.ToString(CultureInfo.InvariantCulture) + "_" +
+                markerRot.w.ToString(CultureInfo.InvariantCulture);
+
+            string transformLocal = positionLocal + "/" + rotationLocal;
+
+            PlayerPrefs.SetString(globalRoot.name, transformLocal);
+            Debug.Log("SaveGlobalRoot");
         }
 
         public void SetText(string txt)
