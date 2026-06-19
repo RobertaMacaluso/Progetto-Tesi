@@ -1,4 +1,4 @@
-using Microsoft.MixedReality.WorldLocking.Core;
+ï»¿using Microsoft.MixedReality.WorldLocking.Core;
 using MixedReality.Toolkit.Examples.Demos;
 using MixedReality.Toolkit.SpatialManipulation;
 using MixedReality.Toolkit.UX;
@@ -67,12 +67,12 @@ public class AppManager : MonoBehaviour
     private bool shelvesScrollViewToBeReset = false;
     //public readonly string artifactPP = "ArtifactID_";
     public readonly string shelfPP = "ShelfID_";
-    private readonly string artifactGeneralText = "Selezionare il reperto a cui si è interessati oppure effettuare una ricerca tramite la barra";
+    private readonly string artifactGeneralText = "Selezionare il reperto a cui si Ã¨ interessati oppure effettuare una ricerca tramite la barra";
     private readonly string artifactTitle = "Reperto: ";
     private readonly string artifactShelfYes = "Il reperto si trova nello scaffale: ";
     private readonly string artifactShelfNo = "Il reperto non si trova in nessuno scaffale";
     private readonly string artifactShelfLast = "Riposizionare il reperto nell'utlimo scaffale in cui si trovava";
-    private readonly string initialDepositText = "Il reperto non è mai stato depositato nel magazzino. Procedere al primo deposito?";
+    private readonly string initialDepositText = "Il reperto non Ã¨ mai stato depositato nel magazzino. Procedere al primo deposito?";
     private readonly string textDeposit = "Deposita reperto in un nuovo scaffale";
     private readonly string initialDepositButtonText = "Deposita reperto in uno scaffale";
     private readonly string artifactNavigation = "Dirigersi verso: ";
@@ -86,6 +86,7 @@ public class AppManager : MonoBehaviour
     //private int depositStep = 0;
 
     [SerializeField] public APIService apiService;
+    //[SerializeField] public PanelPositionLock panelPositionLock;
     [SerializeField] public GameObject globalRoot;
     [SerializeField] private GameObject homePanel;
     [SerializeField] private GameObject markerPanel;
@@ -183,7 +184,7 @@ public class AppManager : MonoBehaviour
 
     }
 
-    //settaggio velocità e distanze dei vari pannelli
+    //settaggio velocitÃ  e distanze dei vari pannelli
     public void PanelsSetting()
     {
         float speed = 0.3f;
@@ -191,42 +192,50 @@ public class AppManager : MonoBehaviour
         float maxDistance = 1f;
         float defaultDistance = 0.8f;
         float maxDegrees = 60f;
-        
+
         // pannello home
-        homePanel.GetComponentInChildren<Follow>().MoveLerpTime = speed;
-        homePanel.GetComponentInChildren<Follow>().RotateLerpTime = speed;
-        homePanel.GetComponentInChildren<Follow>().MinDistance = minDistance;
-        homePanel.GetComponentInChildren<Follow>().MaxDistance = maxDistance;
-        homePanel.GetComponentInChildren<Follow>().DefaultDistance = defaultDistance;
-        homePanel.GetComponentInChildren<Follow>().MaxViewHorizontalDegrees = maxDegrees;
-        homePanel.GetComponentInChildren<Follow>().MaxViewVerticalDegrees = maxDegrees;
+        Follow followHome = homePanel.GetComponentInChildren<Follow>();
+        followHome.ReorientWhenOutsideParameters = false;
+        followHome.MoveLerpTime = speed;
+        followHome.RotateLerpTime = speed;
+        followHome.MinDistance = minDistance;
+        followHome.MaxDistance = maxDistance;
+        followHome.DefaultDistance = defaultDistance;
+        followHome.MaxViewHorizontalDegrees = maxDegrees;
+        followHome.MaxViewVerticalDegrees = maxDegrees;
 
         // pannello reperti
-        A_Menu.artifactsPanel.GetComponentInChildren<Follow>().MoveLerpTime = speed;
-        A_Menu.artifactsPanel.GetComponentInChildren<Follow>().RotateLerpTime = speed;
-        A_Menu.artifactsPanel.GetComponentInChildren<Follow>().MinDistance = minDistance;
-        A_Menu.artifactsPanel.GetComponentInChildren<Follow>().MaxDistance = maxDistance;
-        A_Menu.artifactsPanel.GetComponentInChildren<Follow>().DefaultDistance = defaultDistance;
-        A_Menu.artifactsPanel.GetComponentInChildren<Follow>().MaxViewHorizontalDegrees = maxDegrees;
-        A_Menu.artifactsPanel.GetComponentInChildren<Follow>().MaxViewVerticalDegrees = maxDegrees;
+        Follow followArtifacts = A_Menu.artifactsPanel.GetComponentInChildren<Follow>();
+        followArtifacts.ReorientWhenOutsideParameters = false;
+        followArtifacts.MoveLerpTime = speed;
+        followArtifacts.RotateLerpTime = speed;
+        followArtifacts.MinDistance = minDistance;
+        followArtifacts.MaxDistance = maxDistance;
+        followArtifacts.DefaultDistance = defaultDistance;
+        followArtifacts.MaxViewHorizontalDegrees = maxDegrees;
+        followArtifacts.MaxViewVerticalDegrees = maxDegrees;
 
         // pannello scaffali
-        shelvesListPanel.GetComponentInChildren<Follow>().MoveLerpTime = speed;
-        shelvesListPanel.GetComponentInChildren<Follow>().RotateLerpTime = speed;
-        shelvesListPanel.GetComponentInChildren<Follow>().MinDistance = minDistance;
-        shelvesListPanel.GetComponentInChildren<Follow>().MaxDistance = maxDistance;
-        shelvesListPanel.GetComponentInChildren<Follow>().DefaultDistance = defaultDistance;
-        shelvesListPanel.GetComponentInChildren<Follow>().MaxViewHorizontalDegrees = maxDegrees;
-        shelvesListPanel.GetComponentInChildren<Follow>().MaxViewVerticalDegrees = maxDegrees;
+        Follow followShelves = shelvesListPanel.GetComponentInChildren<Follow>();
+        followShelves.ReorientWhenOutsideParameters = false;
+        followShelves.MoveLerpTime = speed;
+        followShelves.RotateLerpTime = speed;
+        followShelves.MinDistance = minDistance;
+        followShelves.MaxDistance = maxDistance;
+        followShelves.DefaultDistance = defaultDistance;
+        followShelves.MaxViewHorizontalDegrees = maxDegrees;
+        followShelves.MaxViewVerticalDegrees = maxDegrees;
 
         // pannello marker
-        markerPanel.GetComponentInChildren<Follow>().MoveLerpTime = speed;
-        markerPanel.GetComponentInChildren<Follow>().RotateLerpTime = speed;
-        markerPanel.GetComponentInChildren<Follow>().MinDistance = minDistance;
-        markerPanel.GetComponentInChildren<Follow>().MaxDistance = maxDistance;
-        markerPanel.GetComponentInChildren<Follow>().DefaultDistance = defaultDistance;
-        markerPanel.GetComponentInChildren<Follow>().MaxViewHorizontalDegrees = maxDegrees;
-        markerPanel.GetComponentInChildren<Follow>().MaxViewVerticalDegrees = maxDegrees;
+        Follow followMarlker = markerPanel.GetComponentInChildren<Follow>();
+        followMarlker.ReorientWhenOutsideParameters = false;
+        followMarlker.MoveLerpTime = speed;
+        followMarlker.RotateLerpTime = speed;
+        followMarlker.MinDistance = minDistance;
+        followMarlker.MaxDistance = maxDistance;
+        followMarlker.DefaultDistance = defaultDistance;
+        followMarlker.MaxViewHorizontalDegrees = maxDegrees;
+        followMarlker.MaxViewVerticalDegrees = maxDegrees;
     }
 
     public void SetGlobalRoot()
@@ -382,7 +391,7 @@ public class AppManager : MonoBehaviour
         // set dei dati
 
 
-        // se il nuovo scaffale è il primo figlio di un altro elemento questo non deve più essere shelf
+        // se il nuovo scaffale Ã¨ il primo figlio di un altro elemento questo non deve piÃ¹ essere shelf
         StorageContainerView parentView = newShelf.gameObject.transform.parent.gameObject.GetComponent<StorageContainerView>();
         if (parentView != null)
             parentView.data.SetIsShelf(false);
@@ -537,7 +546,62 @@ public class AppManager : MonoBehaviour
     public void PinPanel(GameObject panel)
     {
         Follow follow = panel.GetComponent<Follow>();
-        follow.IgnoreDistanceClamp = !follow.IgnoreDistanceClamp;
+        //follow.IgnoreDistanceClamp = !follow.IgnoreDistanceClamp;
+
+        PanelPositionLock panelPositionLock = panel.GetComponent<PanelPositionLock>();
+        
+        if(panelPositionLock.IsPositionLocked())
+        {
+            follow.IgnoreDistanceClamp = true;
+        }
+        else
+        {
+            follow.IgnoreDistanceClamp = !follow.IgnoreDistanceClamp;
+        }
+
+        panelPositionLock.EnableFollow();
+        //follow.MaxViewHorizontalDegrees = 60;
+        follow.MaxViewVerticalDegrees = 60;
+    }
+
+    //public void UserPinPanel(GameObject panel)
+    //{
+    //    Follow follow = panel.GetComponent<Follow>();
+
+    //    if (follow.MaxViewHorizontalDegrees == 60)
+    //    {
+    //        follow.MaxViewHorizontalDegrees = 360;
+    //        follow.MaxViewVerticalDegrees = 360;
+    //    }
+    //    else
+    //    {
+    //        follow.MaxViewHorizontalDegrees = 60;
+    //        follow.MaxViewVerticalDegrees = 60;
+    //    }
+
+    //    follow.IgnoreDistanceClamp = false;
+    //}
+
+    public void UserPinPanel(GameObject panel)
+    {
+        Follow follow = panel.GetComponent<Follow>();
+        
+
+        // ðŸ”¥ FIX: blocca influenza verticale del Follow anche in UserPin
+        follow.MaxViewVerticalDegrees = 360f;
+        //follow.view = 0f;
+
+        PanelPositionLock panelPositionLock = panel.GetComponent<PanelPositionLock>();
+        if (panelPositionLock.IsPositionLocked())
+        {
+            panelPositionLock.EnableFollow();
+            follow.IgnoreDistanceClamp = false;
+        }
+        else
+        {
+            panelPositionLock.EnablePositionLock();
+            follow.IgnoreDistanceClamp = true;
+        }
     }
 
     //gestisce l'attivazione e disattivazione visiva del pin del pannello
@@ -567,7 +631,12 @@ public class AppManager : MonoBehaviour
     {
         Follow follow = panel.GetComponent<Follow>();
         follow.IgnoreDistanceClamp = false;
-        if(lastToggledPin != null)
+        follow.MaxViewVerticalDegrees = 60;
+
+        PanelPositionLock panelPositionLock = panel.GetComponent<PanelPositionLock>();
+        panelPositionLock.EnableFollow();
+
+        if (lastToggledPin != null)
             lastToggledPin.SetActive(false);
     }
 
@@ -650,7 +719,7 @@ public class AppManager : MonoBehaviour
         spawnedArtifacts.Add(artifact.id, obj);
     }
 
-    //Distrugge il gameobject del reperto che è stato eliminato
+    //Distrugge il gameobject del reperto che Ã¨ stato eliminato
     public void DeleteArtifact(int id)
     {
         Debug.Log("DELETE artifact: " + id);
@@ -1001,7 +1070,7 @@ public class AppManager : MonoBehaviour
         UpdateArtifactList(allArtifacts);
     }
 
-    //gestione del pulsante per tornare indietro nelle varie situazioni in cui può essere cliccato
+    //gestione del pulsante per tornare indietro nelle varie situazioni in cui puÃ² essere cliccato
     public void BackButtonArtifact()
     {
         Debug.Log("Deposit List value: " +  vsrlt.GetForDeposit());
@@ -1159,7 +1228,7 @@ public class AppManager : MonoBehaviour
         A_Menu.artifactTarget.GetComponent<Follow>().enabled = true;
         A_Menu.artifactTarget.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
 
-       //se parte del percorso del nuovo reperto è uguale a qullo del reperto precedente si saltano quei passaggi
+       //se parte del percorso del nuovo reperto Ã¨ uguale a qullo del reperto precedente si saltano quei passaggi
        step = 0;
         if (recentPath.Count > 0)
         {
@@ -1224,7 +1293,7 @@ public class AppManager : MonoBehaviour
             }
 
             //Ogni volta che si raggiunge la freccia target quel passaggio (che corrisponde a step - 1) viene aggiunto al recentPath.
-            //La seconda condizione dell'if serve ad evitare doppioni quando si inizia la navigazione saltando gli step già fatti per l'ultimo reperto !recentPath.Contains(currentPath[step - 1])
+            //La seconda condizione dell'if serve ad evitare doppioni quando si inizia la navigazione saltando gli step giÃ  fatti per l'ultimo reperto !recentPath.Contains(currentPath[step - 1])
             if (step - 1 >= 0 && recentPath.LastOrDefault() != currentPath[step - 1])
                 recentPath.Add(currentPath[step - 1]);
             Debug.Log($"Recent path: {string.Join(", ", recentPath.Select(x => x.name))}");
@@ -1237,7 +1306,7 @@ public class AppManager : MonoBehaviour
             A_Menu.artifactTarget.GetComponent<Follow>().enabled = false;
             A_Menu.artifactTarget.SetActive(true);
 
-            //nel caso tutti gli step siano stati skippati perché si naviga verso lo stesso scaffale
+            //nel caso tutti gli step siano stati skippati perchÃ© si naviga verso lo stesso scaffale
             A_Menu.artifactTarget.GetComponent<ArtifactIndicator>().SetTargetPosition(currentPath[step-1]);
             A_Menu.artifactTarget.transform.position = currentPath[step-1].position;
             
