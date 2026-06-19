@@ -1,3 +1,4 @@
+using Microsoft.MixedReality.WorldLocking.Core;
 using System.Collections.Generic;
 using System.Globalization;
 using TMPro;
@@ -14,6 +15,7 @@ namespace ArUcoDetectionHoloLensUnity
         [SerializeField] private GameObject globalRoot;
         [SerializeField] private float markerSize = 0.08f;
         [SerializeField] private bool useAdditionalMarkers = false;
+
 
         private void Awake()
         {
@@ -68,6 +70,11 @@ namespace ArUcoDetectionHoloLensUnity
 
                     // Salvataggio transform marker nei PlayerPrefs
                     SaveInPlayerPrefs(marker.Position, marker.Rotation);
+
+                    // space pin WLT
+                    //spacePin.transform.SetParent(globalRoot.transform);
+                    //spacePin.transform.localPosition = Vector3.zero;
+                    //spacePin.transform.localRotation = Quaternion.identity;
                 }
 
                 if (detectingText != null)

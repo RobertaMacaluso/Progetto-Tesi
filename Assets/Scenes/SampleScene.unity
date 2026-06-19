@@ -8113,6 +8113,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 183801884}
+  - component: {fileID: 183801885}
   m_Layer: 0
   m_Name: Global Root
   m_TagString: Untagged
@@ -8138,6 +8139,19 @@ Transform:
   - {fileID: 1917763684}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &183801885
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 183801883}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 90b7ad606f014604d9526d135c0fec88, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  modelPositionSource: 0
 --- !u!1 &198924667
 GameObject:
   m_ObjectHideFlags: 0
@@ -41398,7 +41412,7 @@ MonoBehaviour:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 987051155}
-  m_Enabled: 1
+  m_Enabled: 0
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 167b5e16442a6544a8ec5c32da16e835, type: 3}
   m_Name: 
@@ -83445,7 +83459,7 @@ PrefabInstance:
     - target: {fileID: 5387156726585428255, guid: 13ef163941d5bc84ca75acf273d24831,
         type: 3}
       propertyPath: m_IsActive
-      value: 0
+      value: 1
       objectReference: {fileID: 0}
     - target: {fileID: 6004757543300846276, guid: 13ef163941d5bc84ca75acf273d24831,
         type: 3}
