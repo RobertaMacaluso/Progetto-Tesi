@@ -61,16 +61,22 @@ namespace ArUcoDetectionHoloLensUnity
             foreach (var markerPair in markers)
             {
                 var marker = markerPair.Value;
-
+                //int d = marker.Id;
                 if (globalRoot != null)
                 {
                     globalRoot.transform.SetPositionAndRotation(
                         marker.Position,
                         marker.Rotation);
 
+                    //SpacePin spacePin = globalRoot.GetComponent<SpacePin>();
+                    //Pose markerPose = new Pose(marker.Position, marker.Rotation);
+
+                    //spacePin.SetFrozenPose(markerPose);
+
                     // Salvataggio transform marker nei PlayerPrefs
                     SaveInPlayerPrefs(marker.Position, marker.Rotation);
 
+                    Debug.Log("Update spacePin");
                     // space pin WLT
                     //spacePin.transform.SetParent(globalRoot.transform);
                     //spacePin.transform.localPosition = Vector3.zero;

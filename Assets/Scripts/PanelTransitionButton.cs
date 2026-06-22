@@ -1,3 +1,4 @@
+using Microsoft.MixedReality.WorldLocking.Core;
 using MixedReality.Toolkit.SpatialManipulation;
 using System.Collections;
 using UnityEngine;
@@ -7,6 +8,7 @@ public class PanelTransitionButton : MonoBehaviour
     [SerializeField] private GameObject sourcePanel;
     [SerializeField] private GameObject targetPanel;
 
+    //[SerializeField] private SpacePin pin;
 
     public void OpenTargetPanel()
     {
@@ -14,7 +16,13 @@ public class PanelTransitionButton : MonoBehaviour
 
         targetPanel.SetActive(true);
         sourcePanel.SetActive(false);
+
     }
+
+    //public void showNamePin()
+    //{
+    //    Debug.Log("spacePin name = " + pin.AnchorId.ToString());
+    //}
 
     //private IEnumerator OpenPanelRoutine()
     //{

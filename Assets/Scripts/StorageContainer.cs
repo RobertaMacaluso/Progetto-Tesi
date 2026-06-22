@@ -1,29 +1,64 @@
-using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+//using System.Collections;
+//using System.Collections.Generic;
+//using UnityEngine;
 
-[System.Serializable]
+//[System.Serializable]
+//public class StorageContainer
+//{
+//    //[PrimaryKey, AutoIncrement]
+//    public int id;
+//    public string name;
+//    public string worldTransform;
+//    public int parentShelfId;
+//    public bool isShelf = false;
+
+
+//    // Start is called before the first frame update
+//    void Start()
+//    {
+
+//    }
+
+//    // Update is called once per frame
+//    void Update()
+//    {
+
+//    }
+
+//    public void SetIsShelf(bool value)
+//    {
+//        isShelf = value;
+//    }
+
+//    public bool GetIsShelf()
+//        { return isShelf; }
+//}
+using System;
+
+[Serializable]
 public class StorageContainer
 {
-    //[PrimaryKey, AutoIncrement]
     public int id;
     public string name;
     public string worldTransform;
+
     public int parentShelfId;
+
     public bool isShelf = false;
 
+    // indica se è una stanza (con marker)
+    public bool isRoom = false;
 
-    // Start is called before the first frame update
-    void Start()
-    {
-        
-    }
+    // riferimento al marker ArUco
+    public int markerId;
 
-    // Update is called once per frame
-    void Update()
-    {
-        
-    }
+    // dimensioni stanza per collider
+    public float roomWidth;
+    public float roomHeight;
+    public float roomDepth;
+
+    // coordinate centro stanza
+    public string roomCenterPose;
 
     public void SetIsShelf(bool value)
     {
@@ -31,5 +66,17 @@ public class StorageContainer
     }
 
     public bool GetIsShelf()
-        { return isShelf; }
+    {
+        return isShelf;
+    }
+
+    public void SetIsRoom(bool value)
+    {
+        isRoom = value;
+    }
+
+    public bool GetIsRoom()
+    {
+        return isRoom;
+    }
 }
