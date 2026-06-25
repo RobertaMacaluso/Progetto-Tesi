@@ -144,7 +144,7 @@ namespace MixedReality.Toolkit.Examples.Demos
 
         public void SetScrollView()
         {
-            Debug.Log("SetScrollView");
+            //Debug.Log("SetScrollView");
             list = GetComponent<VirtualizedScrollRectList>();
             list.OnVisible = (go, i) =>
             {
@@ -185,7 +185,7 @@ namespace MixedReality.Toolkit.Examples.Demos
 
         void ButtonListener(int i)
         {
-            Debug.Log("Bottone selezionato: " + buttonsNames[i]);
+            //Debug.Log("Bottone selezionato: " + buttonsNames[i]);
 
             if (!forDeposit)
             {
@@ -243,7 +243,7 @@ namespace MixedReality.Toolkit.Examples.Demos
 
         public void SetWords(List<GameObject> items)
         {
-            Debug.Log("SetWords");
+            //Debug.Log("SetWords");
             list = GetComponent<VirtualizedScrollRectList>();
             list.SetItemCount(0);
             buttonsNames.Clear();
@@ -262,7 +262,7 @@ namespace MixedReality.Toolkit.Examples.Demos
             forDeposit = true;
             depositList.Clear();
 
-            Debug.Log("List for deposit");
+            //Debug.Log("List for deposit");
 
             if (parent == warehouse)
                 appManager.A_Menu.artifactText.GetComponent<TextMeshProUGUI>().text = depositText;
@@ -279,7 +279,7 @@ namespace MixedReality.Toolkit.Examples.Demos
             forDeposit = true;
             depositList.Clear();
 
-            Debug.Log("Deposit in last shelf");
+            //Debug.Log("Deposit in last shelf");
 
             GameObject artifact = appManager.GetArtifactSelected();
             //int lastShelvingUnit = PlayerPrefs.GetInt(appManager.artifactPP + artifact.GetComponent<ArtifactView>().data.id + "_Last");
@@ -310,12 +310,12 @@ namespace MixedReality.Toolkit.Examples.Demos
 
         public void HandlePrefab(GameObject text, bool value)
         {
-            Debug.Log("Handle prefab");
+            //Debug.Log("Handle prefab");
  
             Transform icon = text.transform.parent.GetChild(1);
             if (icon != null)
             {
-                Debug.Log("Handle prefab 2");
+                //Debug.Log("Handle prefab 2");
                 icon.gameObject.SetActive(value);
             }
         

@@ -83,6 +83,7 @@ public class AppManager : MonoBehaviour
     private List<Transform> recentPath = new();
     private int step = 0;
     private readonly string indicatorTag = "Target";
+    private List<int> currentRoomsID = new List<int>();
     //private readonly List<Transform> depositPath = new();
     private VirtualizedScrollRectListTester vsrlt;
     //private int depositStep = 0;
@@ -112,6 +113,7 @@ public class AppManager : MonoBehaviour
     [SerializeField] private GameObject returnButton;
     [SerializeField] private GameObject positioningSphere;
     [SerializeField] private GameObject positioningCubeRoom;
+    [SerializeField] private GameObject wireframeCubeRoom;
     private bool firstRoom = false;
     [SerializeField] private GameObject sphereIndicator;
     [SerializeField] private GameObject debugCube;
@@ -133,6 +135,7 @@ public class AppManager : MonoBehaviour
         shelvesListPanel.SetActive(false);
         positioningSphere.SetActive(false);
         positioningCubeRoom.SetActive(false);
+        wireframeCubeRoom.SetActive(false);
         sphereIndicator.SetActive(false);
 
         PanelsSetting();
@@ -186,7 +189,7 @@ public class AppManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-
+        
     }
 
     //settaggio velocità e distanze dei vari pannelli
@@ -268,35 +271,42 @@ public class AppManager : MonoBehaviour
     //posiziona gli scaffali - chiamata nello start e da ResetShelfPosition
     public void SetInitialTransform(GameObject storageElement)
     {
-        //string shelfTransform = PlayerPrefs.GetString(shelfPP + shelf.GetComponent<StorageContainerView>().data.id.ToString());
-        StorageContainer storageContainer = storageElement.GetComponent<StorageContainerView>().data;
-        string shelfTransformLocal = storageContainer.worldTransform;
-        if (!string.IsNullOrEmpty(shelfTransformLocal))
+        StorageContainer data =
+       storageElement.GetComponent<StorageContainerView>().data;
+
+        if (string.IsNullOrEmpty(data.worldTransform))
+            return;
+
+        string[] transform = data.worldTransform.Split('/');
+
+        string[] pos = transform[0].Split('_');
+        string[] rot = transform[1].Split('_');
+
+        storageElement.transform.SetLocalPositionAndRotation(
+            new Vector3(
+                float.Parse(pos[0], CultureInfo.InvariantCulture),
+                float.Parse(pos[1], CultureInfo.InvariantCulture),
+                float.Parse(pos[2], CultureInfo.InvariantCulture)),
+            new Quaternion(
+                float.Parse(rot[0], CultureInfo.InvariantCulture),
+                float.Parse(rot[1], CultureInfo.InvariantCulture),
+                float.Parse(rot[2], CultureInfo.InvariantCulture),
+                float.Parse(rot[3], CultureInfo.InvariantCulture)));
+
+        if (data.isRoom &&
+            !string.IsNullOrEmpty(data.roomCenterPose))
         {
-            //Debug.Log("Settaggio iniziale scaffale " + shelf.name);
+            string[] roomTransform =
+                data.roomCenterPose.Split('/');
 
-            string[] transform = shelfTransformLocal.Split('/');
-            string[] localPosition = transform[0].Split('_');
-            string[] localRotation = transform[1].Split('_');
+            string[] roomPos =
+                roomTransform[0].Split('_');
 
-            storageElement.transform.SetLocalPositionAndRotation(
-                new Vector3(float.Parse(localPosition[0], CultureInfo.InvariantCulture),
-                            float.Parse(localPosition[1], CultureInfo.InvariantCulture),
-                            float.Parse(localPosition[2], CultureInfo.InvariantCulture)), 
-                new Quaternion(float.Parse(localRotation[0], CultureInfo.InvariantCulture),
-                               float.Parse(localRotation[1], CultureInfo.InvariantCulture),
-                               float.Parse(localRotation[2], CultureInfo.InvariantCulture),
-                               float.Parse(localRotation[3], CultureInfo.InvariantCulture)));
-
-            // se è una stanza metto lo spacePin
-            if (storageContainer.isRoom)
-            {
-                SpacePin pin = storageElement.AddComponent<SpacePin>();
-                //pin. = idMarkerDalServer;
-                //pin.AnchorId =  storageContainer.markerId.ToString();
-                Debug.Log(storageElement.name + " spacePin name = " + pin.AnchorId.ToString()); 
-                pin.ResetModelingPose();
-            }
+            storageElement.GetComponent<BoxCollider>().center =
+                new Vector3(
+                    float.Parse(roomPos[0], CultureInfo.InvariantCulture),
+                    float.Parse(roomPos[1], CultureInfo.InvariantCulture),
+                    float.Parse(roomPos[2], CultureInfo.InvariantCulture));
         }
     }
 
@@ -314,6 +324,8 @@ public class AppManager : MonoBehaviour
         {
             Debug.Log("Saving position of child: " + t.gameObject.name);
             SaveTransformObject(t.gameObject, firstRoom);
+
+            firstRoom=false;
         }
 
         ResetPanelAfterPositioning();
@@ -328,53 +340,55 @@ public class AppManager : MonoBehaviour
             return;
         }
 
-        objectToSave.transform.GetLocalPositionAndRotation(out var localPositionTemp, out var localRotationTemp);
-
-        string objectPositionLocal = localPositionTemp.x.ToString(CultureInfo.InvariantCulture) + "_" +
-            localPositionTemp.y.ToString(CultureInfo.InvariantCulture) + "_" +
-            localPositionTemp.z.ToString(CultureInfo.InvariantCulture);
-
-        string objectRotationLocal = localRotationTemp.x.ToString(CultureInfo.InvariantCulture) +"_" + 
-            localRotationTemp.y.ToString(CultureInfo.InvariantCulture) + "_" + 
-            localRotationTemp.z.ToString(CultureInfo.InvariantCulture) + "_" + 
-            localRotationTemp.w.ToString(CultureInfo.InvariantCulture);
-
-        string objectTransformLocal = objectPositionLocal + "/" + objectRotationLocal;
-        //PlayerPrefs.SetString(shelfPP + objectToSave.GetComponent<StorageContainerView>().data.id.ToString(), objectTransform);
-        
         StorageContainer data = objectToSave.GetComponent<StorageContainerView>().data;
-        data.worldTransform = objectTransformLocal;
+        //data.worldTransform = objectTransformLocal;
         Debug.Log("Salvataggio di " + objectToSave.name);
 
         // gestione room
         if (data.isRoom && firstRoom && positioningCubeRoom.activeSelf)
         {
-            Debug.Log("Salvataggio room center");
-            //Vector3 cubePos = positioningCubeRoom.transform.localPosition;
-            //data.roomCenter_X = cubePos.x;
-            //data.roomCenter_Y = cubePos.y;
-            //data.roomCenter_Z = cubePos.z;
-            positioningCubeRoom.transform.GetLocalPositionAndRotation(out var posTemp, out var rotTemp);
+            Debug.Log("Salvataggio room center: " + objectToSave.name);
+            
+            // 1) rotazione room = rotazione cubo
+            objectToSave.transform.rotation =
+                positioningCubeRoom.transform.rotation;
 
-            string cubePositionLocal = posTemp.x.ToString(CultureInfo.InvariantCulture) + "_" +
-                posTemp.y.ToString(CultureInfo.InvariantCulture) + "_" +
-                posTemp.z.ToString(CultureInfo.InvariantCulture);
+            // 2) centro collider = posizione locale cubo
+                Vector3 centerInRoomSpace = objectToSave.transform.InverseTransformPoint(positioningCubeRoom.transform.position);
 
-            string cubeRotationLocal = rotTemp.x.ToString(CultureInfo.InvariantCulture) + "_" +
-                rotTemp.y.ToString(CultureInfo.InvariantCulture) + "_" +
-                rotTemp.z.ToString(CultureInfo.InvariantCulture) + "_" +
-                rotTemp.w.ToString(CultureInfo.InvariantCulture);
+            objectToSave.GetComponent<BoxCollider>().center =
+                centerInRoomSpace;
 
-            string cubeTransformLocal = cubePositionLocal + "/" + cubeRotationLocal;
+            // 3) salvo solo la posizione locale del cubo
+            string cubePositionLocal =
+                centerInRoomSpace.x.ToString(CultureInfo.InvariantCulture) + "_" +
+                centerInRoomSpace.y.ToString(CultureInfo.InvariantCulture) + "_" +
+                centerInRoomSpace.z.ToString(CultureInfo.InvariantCulture);
 
-            data.roomCenterPose = cubeTransformLocal;
-
-            objectToSave.GetComponent<BoxCollider>().center = posTemp;
+            data.roomCenterPose =
+                cubePositionLocal + "/0_0_0_1";
         }
 
-        firstRoom = false;
+        // adesso leggo la transform DEFINITIVA della room
+        objectToSave.transform.GetLocalPositionAndRotation(
+            out var localPos,
+            out var localRot);
 
-        Debug.Log("Salvataggio " + objectToSave.name + ": " + objectTransformLocal);
+        string objectPositionLocal =
+            localPos.x.ToString(CultureInfo.InvariantCulture) + "_" +
+            localPos.y.ToString(CultureInfo.InvariantCulture) + "_" +
+            localPos.z.ToString(CultureInfo.InvariantCulture);
+
+        string objectRotationLocal =
+            localRot.x.ToString(CultureInfo.InvariantCulture) + "_" +
+            localRot.y.ToString(CultureInfo.InvariantCulture) + "_" +
+            localRot.z.ToString(CultureInfo.InvariantCulture) + "_" +
+            localRot.w.ToString(CultureInfo.InvariantCulture);
+
+        data.worldTransform =
+            objectPositionLocal + "/" + objectRotationLocal;
+
+        //Debug.Log("Salvataggio " + objectToSave.name + ": " + objectTransformLocal);
 
         await apiService.UpdateShelf(data);
 
@@ -411,8 +425,14 @@ public class AppManager : MonoBehaviour
 
         Destroy(lastShelfPositioned.GetComponent<ParentConstraint>());
         positioningSphere.SetActive(false);
+        //ParentConstraint[] parentConstraint = lastShelfPositioned.GetComponents<ParentConstraint>();
+        //foreach(var constraint in parentConstraint)
+        //    Destroy(constraint);
         positioningCubeRoom.transform.SetParent(null);
         positioningCubeRoom.SetActive(false);
+        wireframeCubeRoom.transform.SetParent(null);
+        wireframeCubeRoom.SetActive(false);
+        Destroy(wireframeCubeRoom.GetComponent<ParentConstraint>());
         sphereIndicator.SetActive(false);
     }
 
@@ -581,37 +601,59 @@ public class AppManager : MonoBehaviour
         positioningText.gameObject.SetActive(true);
         positioningButton.transform.parent.gameObject.SetActive(true);
         positioningSphere.transform.position = lastShelfPositioned.transform.position;
+        //positioningSphere.transform.rotation = lastShelfPositioned.transform.rotation;
 
-        StorageContainer storageContainer = lastShelfPositioned.GetComponent<StorageContainerView>().data;
-        if (storageContainer.isRoom)
+        StorageContainer data = lastShelfPositioned.GetComponent<StorageContainerView>().data;
+        if (data.isRoom)
         {
-            // Gestione separata del caso delle stanze che devono posizionare il centro e la porta
-            //StartPositioningRoom();
-            //return;
-            positioningCubeRoom.transform.SetParent(lastShelfPositioned.transform);
+            positioningCubeRoom.transform.SetParent(positioningSphere.transform, true);
             positioningCubeRoom.SetActive(true);
-            if (!string.IsNullOrEmpty(storageContainer.roomCenterPose))
+
+            wireframeCubeRoom.transform.SetParent(positioningSphere.transform);
+            wireframeCubeRoom.SetActive(true);
+
+            if (!string.IsNullOrEmpty(data.roomCenterPose))
             {
-                //positioningCubeRoom.transform.localPosition = new Vector3 (storageContainer.roomCenter_X, storageContainer.roomCenter_Y, storageContainer.roomCenter_Z);
-                SetPositioningCubeRoom();
+                BoxCollider box = lastShelfPositioned.GetComponent<BoxCollider>();
+
+                positioningCubeRoom.transform.position =
+                    lastShelfPositioned.transform.TransformPoint(box.center);
             }
             else
             {
                 positioningCubeRoom.transform.position = lastShelfPositioned.transform.position + new Vector3(0.15f, 0f, 0.15f);
+                //positioningCubeRoom.transform.rotation = lastShelfPositioned.transform.rotation;
             }
+            positioningCubeRoom.transform.rotation = lastShelfPositioned.transform.rotation;
+            wireframeCubeRoom.transform.SetPositionAndRotation(positioningCubeRoom.transform.position, positioningCubeRoom.transform.rotation);
+
+
+            ConstraintSource cubeSource = new()
+            {
+                sourceTransform = positioningCubeRoom.transform,
+                weight = 1f
+            };
+            ParentConstraint pcCube = wireframeCubeRoom.AddComponent<ParentConstraint>();
+            pcCube.AddSource(cubeSource);
+            pcCube.enabled = true;
+            pcCube.constraintActive = true;
+
+            wireframeCubeRoom.GetComponent<DrawRoomOutline>()
+                .UpdateRoomDimensions(lastShelfPositioned.GetComponent<BoxCollider>().size);
 
             positioningText.GetComponent<TextMeshProUGUI>().text = "Posizionare la sfera blu nel punto in cui si desidera salvare l'entrata di \"" +
                 lastShelfPositioned.name + "\" \n" +
-                "e il parallelepipedo verde al centro della stanza.";
+                "e il cubo verde al centro della stanza.";
         }
 
-        ConstraintSource source = new()
+        ConstraintSource sphereSource = new()
         {
             sourceTransform = positioningSphere.transform,
             weight = 1f
         };
         ParentConstraint pc = lastShelfPositioned.AddComponent<ParentConstraint>();
-        pc.AddSource(source);
+        pc.AddSource(sphereSource);
+        pc.rotationAxis = Axis.None;
         pc.enabled = true;
         pc.constraintActive = true;
 
@@ -619,27 +661,6 @@ public class AppManager : MonoBehaviour
         positionButton.transform.parent.gameObject.SetActive(false);
         secondText.gameObject.SetActive(false);
         virtualizedList.gameObject.SetActive(false);
-    }
-
-    public void SetPositioningCubeRoom()
-    {
-        string[] transform = lastShelfPositioned.GetComponent<StorageContainerView>().data.roomCenterPose.Split('/');
-        string[] localPosition = transform[0].Split('_');
-        string[] localRotation = transform[1].Split('_');
-
-        //storageElement.transform.SetLocalPositionAndRotation(
-        //Vector3 roomeCenterWorldPosition = new Vector3(float.Parse(localPosition[0], CultureInfo.InvariantCulture),
-        //            float.Parse(localPosition[1], CultureInfo.InvariantCulture),
-        //            float.Parse(localPosition[2], CultureInfo.InvariantCulture));
-
-        positioningCubeRoom.transform.SetLocalPositionAndRotation(
-            new Vector3(float.Parse(localPosition[0], CultureInfo.InvariantCulture),
-                        float.Parse(localPosition[1], CultureInfo.InvariantCulture),
-                        float.Parse(localPosition[2], CultureInfo.InvariantCulture)),
-            new Quaternion(float.Parse(localRotation[0], CultureInfo.InvariantCulture),
-                           float.Parse(localRotation[1], CultureInfo.InvariantCulture),
-                           float.Parse(localRotation[2], CultureInfo.InvariantCulture),
-                           float.Parse(localRotation[3], CultureInfo.InvariantCulture)));
     }
 
 
@@ -1247,7 +1268,7 @@ public class AppManager : MonoBehaviour
     //chiamata quando si clicca sul bottone di un reperto
     public void OnArtifactButtonClicked(int index)
     {
-        Debug.Log("Button clicked: " + index + " - " + artifactsOnList[index].name);
+        //Debug.Log("Button clicked: " + index + " - " + artifactsOnList[index].name);
 
         currentPath.Clear();
         int shelfID = artifactsOnList[index].GetComponent<ArtifactView>().data.GetShelfID();
@@ -1351,10 +1372,18 @@ public class AppManager : MonoBehaviour
         A_Menu.artifactTarget.GetComponent<Follow>().enabled = true;
         A_Menu.artifactTarget.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
 
-       //se parte del percorso del nuovo reperto è uguale a qullo del reperto precedente si saltano quei passaggi
-       step = 0;
+        //se parte del percorso del nuovo reperto è uguale a quello del reperto precedente si saltano quei passaggi
+        step = 0;
+        
+        //if (currentRoomsID.Count > 0)
+        //{
+        //    SkipSteps();
+        //    //return;
+        //}
+
         if (recentPath.Count > 0)
         {
+            Debug.Log("recentPath.Count > 0");
             while (step < currentPath.Count && step < recentPath.Count)
             {
                 if (currentPath[step].name == recentPath[step].name)
@@ -1389,7 +1418,35 @@ public class AppManager : MonoBehaviour
                 recentPath.RemoveRange(step, recentPath.Count - step);
             }
         }
+
+        if (currentRoomsID.Count > 0)
+        {
+            SkipSteps();
+            //return;
+        }
+
         NextStep();
+    }
+
+    private void SkipSteps()
+    {
+        int index = 0;
+        foreach (var localStep in currentPath)
+        {
+            index++;
+            if ( currentRoomsID.Contains(localStep.gameObject.GetComponent<StorageContainerView>().data.id) && step < index)
+            {
+                step = index;
+                Debug.Log("Già nella stanza. Step = " + step);
+                //break;
+            }
+            
+        }
+
+        //for (int i = 0; i < index; i++)
+        //{
+        //    NextStep();
+        //}
     }
 
     //gestione del passaggio del prossimo punto da raggiungere (chiamata anche dal bottone Skip Step nella scena) e del punto di arrivo
@@ -1467,6 +1524,34 @@ public class AppManager : MonoBehaviour
             A_Menu.triggerEntered.Play();
             Debug.Log("Collider di " + other.gameObject.name + ". Step = " + step);
             NextStep();
+        }
+
+        // gestione per sapere dentro quale stanza sono
+        //StorageContainer storageContainer = other.gameObject.TryGetComponent<StorageContainerView>().data;
+        other.gameObject.TryGetComponent<StorageContainerView>(out StorageContainerView storageContainerView);
+
+        if (storageContainerView == null)
+            return;
+
+        if (storageContainerView.data.isRoom && !currentRoomsID.Contains(storageContainerView.data.id))
+        {
+            currentRoomsID.Add(storageContainerView.data.id);
+            Debug.Log("currentRoomsID = " + string.Join(", ", currentRoomsID));
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        other.gameObject.TryGetComponent<StorageContainerView>(out StorageContainerView storageContainerView);
+        //StorageContainer storageContainer = other.gameObject.GetComponent<StorageContainerView>().data;
+
+        if (storageContainerView == null)
+            return;
+
+        if (storageContainerView.data.isRoom && currentRoomsID.Contains(storageContainerView.data.id))
+        {
+            currentRoomsID.Remove(storageContainerView.data.id);
+            Debug.Log("currentRoomsID = " + string.Join(", ", currentRoomsID));
         }
     }
 
@@ -1553,6 +1638,23 @@ public class AppManager : MonoBehaviour
         NextStep();
     }
 
+    public void ManageCubeAndSphere(bool toParent)
+    {
+        if (!positioningCubeRoom.activeSelf)
+        { return; }
+
+        if (toParent)
+        {
+            positioningCubeRoom.transform.SetParent(positioningSphere.transform);
+            wireframeCubeRoom.transform.SetParent(positioningSphere.transform);
+        }
+        else
+        {
+            positioningCubeRoom.transform.SetParent(null);
+            wireframeCubeRoom.transform.SetParent(null);
+        }
+    }
+
     //chiamata quando si ritira un reperto dallo scaffale
     public async void WithdrawArtifact()
     {
@@ -1565,7 +1667,7 @@ public class AppManager : MonoBehaviour
 
         BackButtonArtifact();
     }
-
+    
     public GameObject GetArtifactSelected()
     { return artifactSelected; }
 
