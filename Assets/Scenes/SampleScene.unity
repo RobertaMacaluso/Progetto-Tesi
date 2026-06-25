@@ -35381,7 +35381,7 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   hostTransform: {fileID: 786805216}
-  allowedManipulations: 7
+  allowedManipulations: 1
   allowedInteractionTypes: -2147483641
   applyTorque: 1
   springForceSoftness: 0.1
@@ -35422,6 +35422,47 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   autoConstraintSelection: 1
   selectedConstraints: []
+--- !u!114 &786805226
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 786805210}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f3f2652d4ff14543be4d1ece28036a0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  boundsVisualsPrefab: {fileID: 5671351296789090341, guid: ecbf05ce2121a744cb893e82377ba3cd,
+    type: 3}
+  boundsCalculationMethod: 0
+  includeInactiveObjects: 0
+  overrideBounds: 0
+  boundsOverride: {fileID: 0}
+  flattenMode: 1
+  boundsPadding: 0.01
+  interactable: {fileID: 0}
+  toggleHandlesOnClick: 0
+  dragToggleThreshold: 0.02
+  target: {fileID: 786805216}
+  handlesActive: 1
+  enabledHandles: 1
+  rotateAnchor: 1
+  scaleAnchor: 0
+  scaleBehavior: 0
+  smoothingActive: 1
+  rotateLerpTime: 0.00001
+  scaleLerpTime: 0.00001
+  translateLerpTime: 0.00001
+  enableConstraints: 1
+  constraintsManager: {fileID: 0}
+  manipulationStarted:
+    m_PersistentCalls:
+      m_Calls: []
+  manipulationEnded:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &789656929
 GameObject:
   m_ObjectHideFlags: 0
@@ -83941,6 +83982,10 @@ PrefabInstance:
         type: 3}
       insertIndex: -1
       addedObject: {fileID: 786805221}
+    - targetCorrespondingSourceObject: {fileID: 5387156726585428255, guid: 13ef163941d5bc84ca75acf273d24831,
+        type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 786805226}
   m_SourcePrefab: {fileID: 100100000, guid: 13ef163941d5bc84ca75acf273d24831, type: 3}
 --- !u!1 &1944993851
 GameObject:

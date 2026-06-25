@@ -142,7 +142,11 @@ PlayerSettings:
   visionOSBundleVersion: 1.0
   tvOSBundleVersion: 1.0
   bundleVersion: 1.0
-  preloadedAssets: []
+  preloadedAssets:
+  - {fileID: 11400000, guid: c677e5c4eb85b7849a8da406775c299d, type: 2}
+  - {fileID: 4869460839599842970, guid: dd330cdcfc8d1e94d8438decbd5741a9, type: 2}
+  - {fileID: 11400000, guid: 96ae244eeada8894dab01c9d03f59bce, type: 2}
+  - {fileID: -7630933458353145215, guid: 29fd5285eec4d29438047e14c2382726, type: 2}
   metroInputSource: 0
   wsaTransparentSwapchain: 0
   m_HolographicPauseOnTrackingLoss: 1
@@ -772,10 +776,10 @@ PlayerSettings:
       PointOfService: False
       RecordedCallsFolder: False
       Contacts: False
-      Proximity: False
       InternetClient: True
       CodeGeneration: False
       BackgroundMediaPlayback: False
+      Proximity: False
   metroTargetDeviceFamilies:
     Desktop: False
     Holographic: True

@@ -1552,6 +1552,22 @@ public class AppManager : MonoBehaviour
         {
             currentRoomsID.Remove(storageContainerView.data.id);
             Debug.Log("currentRoomsID = " + string.Join(", ", currentRoomsID));
+
+            // se esco da un trigger del percorso torno indietro negli step
+            if(!A_Menu.artifactTarget.activeSelf)
+            { return; }
+
+            int index = currentPath.IndexOf(other.gameObject.transform);
+
+            if (index != -1)
+            {
+                step = index;
+                Debug.Log("Step - recentPath.count: " + step + " - " + recentPath.Count);
+                if (step < recentPath.Count)
+                    recentPath.RemoveRange(index, recentPath.Count - index);
+                
+                NextStep();
+            }
         }
     }
 
