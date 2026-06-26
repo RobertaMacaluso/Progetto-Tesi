@@ -8,6 +8,7 @@ using MixedReality.Toolkit.UX;
 using MixedReality.Toolkit.UX.Experimental;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using TMPro;
 using Unity.Mathematics;
@@ -229,10 +230,37 @@ namespace MixedReality.Toolkit.Examples.Demos
             //PlayerPrefs.SetInt(appManager.artifactPP + artifact.GetComponent<ArtifactView>().data.id.ToString(), shelfForDeposit.GetComponent<StorageContainerView>().data.id);
             //PlayerPrefs.SetInt(appManager.artifactPP + artifact.GetComponent<ArtifactView>().data.id.ToString() + "_Last", shelfForDeposit.GetComponent<StorageContainerView>().data.id);
 
+            CalculateArtifactPose(artifact);
+
             await appManager.apiService.UpdateArtifact(data);
 
             Debug.Log("Deposit in Shelf");
             appManager.DepositSucceded();
+        }
+
+        private void CalculateArtifactPose(GameObject artifact)
+        {
+            // calcolo pos e rot del reperto rispetto allo scaffale
+            Vector3 localPos =
+                shelfForDeposit.transform.InverseTransformPoint(
+                    appManager.A_Menu.artifactProp.transform.position);
+
+            Quaternion localRot =
+                Quaternion.Inverse(shelfForDeposit.transform.rotation) *
+                appManager.A_Menu.artifactProp.transform.rotation;
+
+            string position =
+                localPos.x.ToString(CultureInfo.InvariantCulture) + "_" +
+                localPos.y.ToString(CultureInfo.InvariantCulture) + "_" +
+                localPos.z.ToString(CultureInfo.InvariantCulture);
+
+            string rotation =
+                localRot.x.ToString(CultureInfo.InvariantCulture) + "_" +
+                localRot.y.ToString(CultureInfo.InvariantCulture) + "_" +
+                localRot.z.ToString(CultureInfo.InvariantCulture) + "_" +
+                localRot.w.ToString(CultureInfo.InvariantCulture);
+
+            artifact.GetComponent<ArtifactView>().data.containerLocalPose = position + "/" + rotation;
         }
 
         public void DepositFinished()
@@ -346,6 +374,9 @@ namespace MixedReality.Toolkit.Examples.Demos
 
         public void SetForDeposit(bool value)
             { forDeposit = value; }
+
+        public GameObject GetShelfDeposit()
+        { return shelfForDeposit; }
     }
 }
 #pragma warning restore CS1591
