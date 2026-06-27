@@ -45,6 +45,7 @@ public struct ArtifactsStruct
     public GameObject artifactProp;
     public GameObject artifactIndicator;
     public GameObject solverIndicator;
+    public GameObject canvasDistance;
     public GameObject navigationText;
     public GameObject depositButton;
     public GameObject depositInLastShelfButton;
@@ -89,6 +90,9 @@ public class AppManager : MonoBehaviour
     private List<int> currentRoomsID = new List<int>();
     //private readonly List<Transform> depositPath = new();
     private VirtualizedScrollRectListTester vsrltDeposit;
+    private TextMeshProUGUI distanceText;
+    private MeshRenderer solverRenderer;
+    private GameObject distancePlate;
     //private int depositStep = 0;
 
     [SerializeField] public APIService apiService;
@@ -149,6 +153,7 @@ public class AppManager : MonoBehaviour
         A_Menu.artifactProp.SetActive(false);
         A_Menu.artifactIndicator.SetActive(false);
         A_Menu.solverIndicator.SetActive(false);
+        //A_Menu.canvasDistance.SetActive(false);
         A_Menu.navigationText.SetActive(false);
         A_Menu.depositButton.SetActive(false);
         A_Menu.depositInShelfButton.SetActive(false);
@@ -190,12 +195,64 @@ public class AppManager : MonoBehaviour
 
         vsrltDeposit = A_Menu.depositList.GetComponentInChildren<VirtualizedScrollRectListTester>();
         artifactIndicatorScale = A_Menu.artifactIndicator.transform.localScale;
+        distanceText = A_Menu.canvasDistance.GetComponentInChildren<TextMeshProUGUI>();
+        solverRenderer = A_Menu.solverIndicator.GetComponent<MeshRenderer>();
+        distancePlate = A_Menu.canvasDistance.transform.GetChild(1).gameObject;
     }
 
     // Update is called once per frame
     void Update()
     {
-        
+        if (A_Menu.canvasDistance.activeSelf)
+        {
+            DirectionalIndicator directionalIndicator = A_Menu.solverIndicator.GetComponent<DirectionalIndicator>();
+            float distance = Vector3.Distance(A_Menu.artifactTarget.transform.position, this.gameObject.transform.position);
+            int d = Mathf.FloorToInt(distance);
+            if (d > 1)
+            {
+                distanceText.text = d.ToSafeString() + "m";
+
+                if (!directionalIndicator.enabled)
+                {
+                    //solverRenderer.enabled = true;
+                    //distancePlate.SetActive(false);
+                    A_Menu.canvasDistance.GetComponent<Follow>().enabled = false;
+                    directionalIndicator.enabled = true;
+                }
+            }  
+            else
+            {
+                distanceText.text = "<1m";
+
+                if (directionalIndicator.enabled)
+                {
+                    solverRenderer.enabled = false;
+                    distancePlate.SetActive(true);
+                    A_Menu.canvasDistance.GetComponent<Follow>().enabled = true;
+                    directionalIndicator.enabled = false;
+                }
+            }
+            
+            //if (!directionalIndicator.enabled)
+            //{ return; }
+
+            if (solverRenderer.enabled == true && distancePlate.activeSelf) //solverRenderer.enabled == true && 
+            {
+                distancePlate.SetActive(false);
+                A_Menu.canvasDistance.GetComponent<Follow>().enabled = false;
+                A_Menu.canvasDistance.GetComponent<ParentConstraint>().enabled = true;
+                A_Menu.canvasDistance.transform.localPosition = Vector3.zero;
+                A_Menu.canvasDistance.transform.localScale = Vector3.one * 0.02f;
+                //Debug.Log("Scala 0.02");
+            }
+
+            if (solverRenderer.enabled == false && !distancePlate.activeSelf) //solverRenderer.enabled == false && 
+            {
+                distancePlate.SetActive(true);
+                A_Menu.canvasDistance.GetComponent<Follow>().enabled = true;
+                A_Menu.canvasDistance.GetComponent<ParentConstraint>().enabled = false;
+            }
+        }
     }
 
     //settaggio velocità e distanze dei vari pannelli
@@ -1375,6 +1432,9 @@ public class AppManager : MonoBehaviour
         A_Menu.startNavigationButton.SetActive(false);
         A_Menu.stopNavigationButton.SetActive(true);
         A_Menu.solverIndicator.SetActive(true);
+        A_Menu.solverIndicator.GetComponent<DirectionalIndicator>().enabled = true;
+        //A_Menu.canvasDistance.SetActive(true);
+        //A_Menu.canvasDistance.transform.SetParent(A_Menu.solverIndicator.transform);
         A_Menu.artifactTarget.GetComponent<Follow>().enabled = true;
         A_Menu.artifactTarget.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
 
@@ -1463,6 +1523,7 @@ public class AppManager : MonoBehaviour
             A_Menu.artifactTarget.GetComponent<ArtifactIndicator>().SetTargetPosition(currentPath[step]);
             A_Menu.artifactTarget.transform.position = currentPath[step].position;
             Debug.Log("Next step: " + step + " - " + currentPath[step].name);
+            A_Menu.solverIndicator.GetComponent<DirectionalIndicator>().enabled = true;
             A_Menu.artifactTarget.SetActive(true);
             A_Menu.navigationText.SetActive(true);
             A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = artifactNavigation + currentPath[step].name;
@@ -1533,6 +1594,7 @@ public class AppManager : MonoBehaviour
         A_Menu.withdrawButton.SetActive(true);
         A_Menu.artifactTarget.SetActive(false);
         A_Menu.solverIndicator.SetActive(false);
+        //A_Menu.canvasDistance.SetActive(false);
 
         // gestione indicatore reperto
         Artifact artifact = artifactSelected.GetComponent<ArtifactView>().data;
@@ -1542,6 +1604,7 @@ public class AppManager : MonoBehaviour
         Debug.Log("ShelfDeposit = " + shelfDeposit.name);
 
         A_Menu.artifactIndicator.SetActive(true);
+        //A_Menu.artifactIndicator.GetComponent<Follow>().enabled = false;
         A_Menu.artifactIndicator.transform.SetParent(shelfDeposit.transform);
 
         if (string.IsNullOrEmpty(artifact.containerLocalPose))
@@ -1570,7 +1633,8 @@ public class AppManager : MonoBehaviour
             );
 
             A_Menu.artifactIndicator.transform.position =
-                shelfDeposit.transform.TransformPoint(localPosition);
+                shelfDeposit.transform.TransformPoint(localPosition) + 
+                new Vector3(0f, artifact.artifactHeight / 2, 0f);
 
             A_Menu.artifactIndicator.transform.rotation =
                 shelfDeposit.transform.rotation * localRotation;
@@ -1609,6 +1673,7 @@ public class AppManager : MonoBehaviour
             A_Menu.artifactIndicator.transform.localScale =
                 artifactIndicatorScale * scaleFactor;
         }
+        //A_Menu.artifactIndicator.GetComponent<Follow>().enabled = true;
     }
 
     // posizionamento del reperto all'interno dello scaffale scelto
@@ -1623,6 +1688,7 @@ public class AppManager : MonoBehaviour
 
         A_Menu.artifactProp.SetActive(true);
         A_Menu.artifactProp.transform.position = shelfDeposit.transform.position;
+        A_Menu.artifactProp.transform.localScale = new Vector3(artifact.artifactWidth, artifact.artifactHeight, artifact.artifactDepth);
         //A_Menu.artifactProp.transform.rotation = shelfDeposit.transform.rotation;
     }
 
@@ -1666,8 +1732,8 @@ public class AppManager : MonoBehaviour
             Debug.Log("currentRoomsID = " + string.Join(", ", currentRoomsID));
 
             // se esco da un trigger del percorso torno indietro negli step
-            if(!A_Menu.artifactTarget.activeSelf)
-            { return; }
+            //if(!A_Menu.artifactTarget.activeSelf)
+            //{ return; }
 
             int index = currentPath.IndexOf(other.gameObject.transform);
 
@@ -1677,8 +1743,13 @@ public class AppManager : MonoBehaviour
                 Debug.Log("Step - recentPath.count: " + step + " - " + recentPath.Count);
                 if (step < recentPath.Count)
                     recentPath.RemoveRange(index, recentPath.Count - index);
-                
-                NextStep();
+
+                if (A_Menu.artifactTarget.activeSelf)
+                {
+                    A_Menu.artifactTarget.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+                    A_Menu.artifactTarget.GetComponent<Follow>().enabled = true;
+                    NextStep();
+                }
             }
         }
     }
@@ -1690,6 +1761,8 @@ public class AppManager : MonoBehaviour
         A_Menu.artifactProp.SetActive(false);
         A_Menu.artifactIndicator.SetActive(false);
         A_Menu.solverIndicator.SetActive(false);
+        //A_Menu.canvasDistance.SetActive(false);
+        A_Menu.artifactIndicator.transform.SetParent(null);
         A_Menu.stopNavigationButton.SetActive(false);
         A_Menu.navigationText.SetActive(false);
         A_Menu.depositButton.SetActive(false);
