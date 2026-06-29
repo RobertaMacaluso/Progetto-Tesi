@@ -69,6 +69,7 @@ public class AppManager : MonoBehaviour
     private Vector3 artifactIndicatorScale;
     private Dictionary<int, GameObject> spawnedArtifacts = new Dictionary<int, GameObject>();
     private Dictionary<int, GameObject> spawnedShelves = new Dictionary<int, GameObject>();
+    private Dictionary<int, GameObject> rooms = new Dictionary<int, GameObject>();
     private bool artifactScrollViewToBeReset = false;
     private bool shelvesScrollViewToBeReset = false;
     //public readonly string artifactPP = "ArtifactID_";
@@ -113,6 +114,7 @@ public class AppManager : MonoBehaviour
 
     //Warehouse
     [SerializeField] private GameObject warehouse;
+    [SerializeField] private MarkersManager markersManager;
     [SerializeField] private GameObject shelfPrefab;
     [SerializeField] public GameObject shelvesListPanel;
     [SerializeField] private PressableButton buttonPrefabShelves;
@@ -334,42 +336,72 @@ public class AppManager : MonoBehaviour
     //posiziona gli scaffali - chiamata nello start e da ResetShelfPosition
     public void SetInitialTransform(GameObject storageElement)
     {
-        StorageContainer data =
-       storageElement.GetComponent<StorageContainerView>().data;
+        StorageContainer data = storageElement.GetComponent<StorageContainerView>().data;
 
-        if (string.IsNullOrEmpty(data.worldTransform))
-            return;
-
-        string[] transform = data.worldTransform.Split('/');
-
-        string[] pos = transform[0].Split('_');
-        string[] rot = transform[1].Split('_');
-
-        storageElement.transform.SetLocalPositionAndRotation(
-            new Vector3(
-                float.Parse(pos[0], CultureInfo.InvariantCulture),
-                float.Parse(pos[1], CultureInfo.InvariantCulture),
-                float.Parse(pos[2], CultureInfo.InvariantCulture)),
-            new Quaternion(
-                float.Parse(rot[0], CultureInfo.InvariantCulture),
-                float.Parse(rot[1], CultureInfo.InvariantCulture),
-                float.Parse(rot[2], CultureInfo.InvariantCulture),
-                float.Parse(rot[3], CultureInfo.InvariantCulture)));
-
-        if (data.isRoom &&
-            !string.IsNullOrEmpty(data.roomCenterPose))
+        if (!string.IsNullOrEmpty(data.worldTransform))
         {
-            string[] roomTransform =
+            string[] transform = data.worldTransform.Split('/');
+
+            string[] pos = transform[0].Split('_');
+            string[] rot = transform[1].Split('_');
+
+            if (data.markerId == -1)
+            {
+                storageElement.transform.SetLocalPositionAndRotation(
+                      new Vector3(
+                          float.Parse(pos[0], CultureInfo.InvariantCulture),
+                          float.Parse(pos[1], CultureInfo.InvariantCulture),
+                          float.Parse(pos[2], CultureInfo.InvariantCulture)),
+                      new Quaternion(
+                          float.Parse(rot[0], CultureInfo.InvariantCulture),
+                          float.Parse(rot[1], CultureInfo.InvariantCulture),
+                          float.Parse(rot[2], CultureInfo.InvariantCulture),
+                          float.Parse(rot[3], CultureInfo.InvariantCulture)));
+            }
+            else
+            {
+                Debug.Log("SetInitialTransfomr room: " + data.markerId.ToString());
+                GameObject marker = markersManager.GetMarkerByID(data.markerId);
+                if (marker != null) 
+                    markersManager.SetRoomByMarker(storageElement.GetComponent<StorageContainerView>(), marker);
+            }
+          
+        }
+
+        if (data.isRoom)
+        {
+            if (!string.IsNullOrEmpty(data.roomCenterPose))
+            {
+                string[] roomTransform =
                 data.roomCenterPose.Split('/');
 
-            string[] roomPos =
-                roomTransform[0].Split('_');
+                string[] roomPos =
+                    roomTransform[0].Split('_');
 
-            storageElement.GetComponent<BoxCollider>().center =
-                new Vector3(
-                    float.Parse(roomPos[0], CultureInfo.InvariantCulture),
-                    float.Parse(roomPos[1], CultureInfo.InvariantCulture),
-                    float.Parse(roomPos[2], CultureInfo.InvariantCulture));
+                storageElement.GetComponent<BoxCollider>().center =
+                    new Vector3(
+                        float.Parse(roomPos[0], CultureInfo.InvariantCulture),
+                        float.Parse(roomPos[1], CultureInfo.InvariantCulture),
+                        float.Parse(roomPos[2], CultureInfo.InvariantCulture));
+            }
+            
+            if (data.markerId != -1)
+            {
+                if (markersManager.GetMarkerByID(data.markerId) == null)
+                {
+                    Debug.Log("Spawn Marker_" + data.markerId);
+                    // spawn del gameObject marker
+                    markersManager.SpawnMarkers(storageElement.GetComponent<StorageContainerView>());
+
+                    // aggiunta della room al dizionario
+                    if (!rooms.ContainsKey(data.markerId))
+                        rooms.Add(data.markerId, storageElement);
+                }
+                else
+                    Debug.Log("Saltato spawn Marker_" + data.markerId);
+
+            }
+
         }
     }
 
@@ -405,7 +437,6 @@ public class AppManager : MonoBehaviour
 
         StorageContainer data = objectToSave.GetComponent<StorageContainerView>().data;
         //data.worldTransform = objectTransformLocal;
-        Debug.Log("Salvataggio di " + objectToSave.name);
 
         // gestione room
         if (data.isRoom && firstRoom && positioningCubeRoom.activeSelf)
@@ -432,24 +463,55 @@ public class AppManager : MonoBehaviour
                 cubePositionLocal + "/0_0_0_1";
         }
 
-        // adesso leggo la transform DEFINITIVA della room
-        objectToSave.transform.GetLocalPositionAndRotation(
+        // adesso leggo la transform DEFINITIVA dell'elemento
+        if (data.isRoom && data.markerId > 0)
+        {
+            GameObject markerObj = markersManager.GetMarkerByID(data.markerId);
+            if (markerObj != null)
+            {
+                Vector3 localPos = markerObj.transform.InverseTransformPoint(objectToSave.transform.position);
+                Quaternion localRot = Quaternion.Inverse(markerObj.transform.rotation) * objectToSave.transform.rotation;
+
+                string objectPositionLocal =
+                localPos.x.ToString(CultureInfo.InvariantCulture) + "_" +
+                localPos.y.ToString(CultureInfo.InvariantCulture) + "_" +
+                localPos.z.ToString(CultureInfo.InvariantCulture);
+
+                string objectRotationLocal =
+                    localRot.x.ToString(CultureInfo.InvariantCulture) + "_" +
+                    localRot.y.ToString(CultureInfo.InvariantCulture) + "_" +
+                    localRot.z.ToString(CultureInfo.InvariantCulture) + "_" +
+                    localRot.w.ToString(CultureInfo.InvariantCulture);
+
+                data.worldTransform =
+                    objectPositionLocal + "/" + objectRotationLocal;
+
+                Debug.Log("Salvataggio room " + objectToSave.name);
+            }
+        }
+        else
+        {
+            objectToSave.transform.GetLocalPositionAndRotation(
             out var localPos,
             out var localRot);
 
-        string objectPositionLocal =
-            localPos.x.ToString(CultureInfo.InvariantCulture) + "_" +
-            localPos.y.ToString(CultureInfo.InvariantCulture) + "_" +
-            localPos.z.ToString(CultureInfo.InvariantCulture);
+            string objectPositionLocal =
+                localPos.x.ToString(CultureInfo.InvariantCulture) + "_" +
+                localPos.y.ToString(CultureInfo.InvariantCulture) + "_" +
+                localPos.z.ToString(CultureInfo.InvariantCulture);
 
-        string objectRotationLocal =
-            localRot.x.ToString(CultureInfo.InvariantCulture) + "_" +
-            localRot.y.ToString(CultureInfo.InvariantCulture) + "_" +
-            localRot.z.ToString(CultureInfo.InvariantCulture) + "_" +
-            localRot.w.ToString(CultureInfo.InvariantCulture);
+            string objectRotationLocal =
+                localRot.x.ToString(CultureInfo.InvariantCulture) + "_" +
+                localRot.y.ToString(CultureInfo.InvariantCulture) + "_" +
+                localRot.z.ToString(CultureInfo.InvariantCulture) + "_" +
+                localRot.w.ToString(CultureInfo.InvariantCulture);
 
-        data.worldTransform =
-            objectPositionLocal + "/" + objectRotationLocal;
+            data.worldTransform =
+                objectPositionLocal + "/" + objectRotationLocal;
+
+            Debug.Log("Salvataggio elemento " + objectToSave.name);
+        }
+        
 
         //Debug.Log("Salvataggio " + objectToSave.name + ": " + objectTransformLocal);
 
@@ -1026,6 +1088,7 @@ public class AppManager : MonoBehaviour
 
         spawnedShelves.Clear();
         allShelves.Clear();
+        rooms.Clear();
 
         // riscarica dal server
         List<StorageContainer> shelves = await apiService.GetShelves();
@@ -1688,7 +1751,10 @@ public class AppManager : MonoBehaviour
 
         A_Menu.artifactProp.SetActive(true);
         A_Menu.artifactProp.transform.position = shelfDeposit.transform.position;
-        A_Menu.artifactProp.transform.localScale = new Vector3(artifact.artifactWidth, artifact.artifactHeight, artifact.artifactDepth);
+        if (artifact.artifactWidth > 0 && artifact.artifactHeight > 0 && artifact.artifactDepth > 0)
+            A_Menu.artifactProp.transform.localScale = new Vector3(artifact.artifactWidth, artifact.artifactHeight, artifact.artifactDepth);
+        else
+            A_Menu.artifactProp.transform.localScale = new Vector3(0.2f, 0.2f, 0.2f);
         //A_Menu.artifactProp.transform.rotation = shelfDeposit.transform.rotation;
     }
 
@@ -1933,6 +1999,14 @@ public class AppManager : MonoBehaviour
 
     public List<GameObject> GetArtifactsList()
     { return allArtifacts; }
+
+    public GameObject GetRoomByID(int id)
+    {
+        if (rooms.ContainsKey(id))
+            return rooms[id];
+        else
+            return null;
+    }
 
     //funzione di debug chiamata da handmenu per visualizzare la posizione di tutti gli shelves
     public void VisualizeAllShelves(bool visualize)

@@ -35257,7 +35257,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 106, y: -26}
+  m_AnchoredPosition: {x: 106, y: -28}
   m_SizeDelta: {x: 212, y: 32}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &756212459
@@ -44059,7 +44059,7 @@ GameObject:
   - component: {fileID: 987051166}
   - component: {fileID: 987051164}
   m_Layer: 0
-  m_Name: Manager
+  m_Name: AppManager
   m_TagString: Player
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -44129,6 +44129,7 @@ MonoBehaviour:
   positioningText: {fileID: 24025637}
   positioningButton: {fileID: 300923993}
   warehouse: {fileID: 1917763683}
+  markersManager: {fileID: 2046840981}
   shelfPrefab: {fileID: 4217199921677783637, guid: cd4007f3b45712a45ad8bde8147ef9d1,
     type: 3}
   shelvesListPanel: {fileID: 1389229846}
@@ -48176,6 +48177,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 837120e8f5f918f4d9d166ca486054d9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  markersManager: {fileID: 2046840981}
   detector: {fileID: 1082420585}
   cameraPlayer: {fileID: 1923192296}
   detectingText: {fileID: 1586166868}
@@ -48196,6 +48198,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   detector: {fileID: 1082420585}
   arUcoDebugVisualizer: {fileID: 1082420587}
+  appManager: {fileID: 987051162}
+  markersManager: {fileID: 2046840981}
 --- !u!1 &1085307289
 GameObject:
   m_ObjectHideFlags: 0
@@ -82010,8 +82014,8 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 1}
   m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 110, y: -82.11}
-  m_SizeDelta: {x: 212, y: 52}
+  m_AnchoredPosition: {x: 110, y: -116.18}
+  m_SizeDelta: {x: 212, y: 54}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1836408965
 MonoBehaviour:
@@ -92242,6 +92246,53 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
+--- !u!1 &2046840980
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2046840982}
+  - component: {fileID: 2046840981}
+  m_Layer: 0
+  m_Name: MarkersManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2046840981
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2046840980}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4d451963f5452a347aa4e2a242e10b39, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  cubePlaceHolder: {fileID: 5387156726585428255, guid: 13ef163941d5bc84ca75acf273d24831,
+    type: 3}
+  globalRoot: {fileID: 183801883}
+--- !u!4 &2046840982
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2046840980}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2047379396
 GameObject:
   m_ObjectHideFlags: 0
@@ -105299,7 +105350,7 @@ MonoBehaviour:
   gutter: 4
   margin: 4
   trailingSpace: 0
-  itemCount: 12
+  itemCount: 14
 --- !u!4 &4049211494269730958
 Transform:
   m_ObjectHideFlags: 0
@@ -106135,7 +106186,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -2.0000305}
+  m_AnchoredPosition: {x: 0, y: -1.9999695}
   m_SizeDelta: {x: 0, y: 4}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!114 &4609586032541029188
@@ -111169,7 +111220,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 5582626526684711792}
   m_HandleRect: {fileID: 5253841396296440117}
   m_Direction: 2
-  m_Value: 1.0000038
+  m_Value: 0.99998474
   m_Size: 0.9802954
   m_NumberOfSteps: 0
   m_OnValueChanged:
@@ -116135,6 +116186,7 @@ SceneRoots:
   - {fileID: 1651245248}
   - {fileID: 987051157}
   - {fileID: 1082420586}
+  - {fileID: 2046840982}
   - {fileID: 1027756229}
   - {fileID: 1615468124}
   - {fileID: 183801884}
