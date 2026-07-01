@@ -134,6 +134,7 @@ public class AppManager : MonoBehaviour
     // Start is called before the first frame update
     async void Start()
     {
+        
         WorldLockingManager.GetInstance().Load();
 
         apiService = new APIService();
@@ -330,6 +331,22 @@ public class AppManager : MonoBehaviour
                                float.Parse(localRotation[1], CultureInfo.InvariantCulture),
                                float.Parse(localRotation[2], CultureInfo.InvariantCulture),
                                float.Parse(localRotation[3], CultureInfo.InvariantCulture)));
+
+            // --- INTEGRAZIONE WORLD LOCKING TOOLS (WLT) ---
+            // Recuperiamo lo SpacePin che hai già messo sulla globalRoot nella scena
+            SpacePin spacePin = globalRoot.GetComponent<SpacePin>();
+
+            if (spacePin != null)
+            {
+                // Diciamo al WLT che questa è la posizione teorica ufficiale della root
+                spacePin.ResetModelingPose();
+                Debug.Log("[WLT] Modeling Pose di GlobalRoot agganciata correttamente.");
+            }
+            else
+            {
+                Debug.LogError("Componente SpacePin non trovato sulla globalRoot! Assicurati che sia presente nella scena.");
+            }
+            // ----------------------------------------------
         }
     }
 

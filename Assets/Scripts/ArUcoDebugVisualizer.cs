@@ -72,28 +72,8 @@ namespace ArUcoDetectionHoloLensUnity
 
                     if ( globalRoot != null)
                     {
-                        globalRoot.transform.SetPositionAndRotation(
-                            marker.Position,
-                            marker.Rotation);
-                        Debug.Log("Posizionamento globalRoot");
+                        ManageUpdates(globalRoot, marker);
                     }
-                    
-
-
-                    //SaveInPlayerPrefs(marker.Position, marker.Rotation, marker.Id);
-
-
-                    //SpacePin spacePin = globalRoot.GetComponent<SpacePin>();
-                    //Pose markerPose = new Pose(marker.Position, marker.Rotation);
-
-                    //spacePin.SetFrozenPose(markerPose);
-
-                    // Salvataggio transform marker nei PlayerPrefs
-                    //Debug.Log("Update spacePin");
-                    // space pin WLT
-                    //spacePin.transform.SetParent(globalRoot.transform);
-                    //spacePin.transform.localPosition = Vector3.zero;
-                    //spacePin.transform.localRotation = Quaternion.identity;
                 }
                 else
                 {
@@ -103,33 +83,30 @@ namespace ArUcoDetectionHoloLensUnity
                     if (markerObj != null)
                     {
                         // disattivo constraint
-                        ParentConstraint pc = markerObj.GetComponent<ParentConstraint>();
-                        pc.constraintActive = false;
+                        //ParentConstraint pc = markerObj.GetComponent<ParentConstraint>();
+                        //pc.constraintActive = false;
 
-                        markerObj.transform.SetPositionAndRotation(
-                            marker.Position,
-                            marker.Rotation);
-                        Debug.Log("Posizionamento Marker_" + marker.Id.ToString());
+                        ManageUpdates(markerObj, marker);
 
                         // riattivo constraint
-                        int index = 0; // se hai una sola source
+                        //int index = 0; // se hai una sola source
 
-                        Vector3 translationOffset =
-                            Quaternion.Inverse(globalRoot.transform.rotation) *
-                            (markerObj.transform.position - globalRoot.transform.position);
+                        //Vector3 translationOffset =
+                        //    Quaternion.Inverse(globalRoot.transform.rotation) *
+                        //    (markerObj.transform.position - globalRoot.transform.position);
 
-                        Quaternion rotationOffset =
-                            Quaternion.Inverse(globalRoot.transform.rotation) *
-                            markerObj.transform.rotation;
+                        //Quaternion rotationOffset =
+                        //    Quaternion.Inverse(globalRoot.transform.rotation) *
+                        //    markerObj.transform.rotation;
 
-                        pc.SetTranslationOffset(index, translationOffset);
-                        pc.SetRotationOffset(index, rotationOffset.eulerAngles);
+                        //pc.SetTranslationOffset(index, translationOffset);
+                        //pc.SetRotationOffset(index, rotationOffset.eulerAngles);
 
-                        pc.constraintActive = true;
+                        //pc.constraintActive = true;
                     }
                 }
 
-                SaveInPlayerPrefs(marker.Position, marker.Rotation, marker.Id);
+                //SaveInPlayerPrefs(marker.Position, marker.Rotation, marker.Id);
 
                 if (detectingText != null)
                 {
@@ -146,28 +123,191 @@ namespace ArUcoDetectionHoloLensUnity
             }
         }
 
+        public void ManageUpdates(GameObject gameObject, ArUcoMarkerDetection.Marker marker)
+        {
+            float threshold = (gameObject == globalRoot) ? 0.1f : 0.05f;
+
+            // Se non è mai stato salvato nei PlayerPrefs
+            if (string.IsNullOrEmpty(PlayerPrefs.GetString(gameObject.name)))
+            {
+                UpdateMarker(gameObject, marker, true);
+                return;
+            }
+
+            SpacePin pin = gameObject.GetComponent<SpacePin>();
+
+            if (pin != null)
+            {
+                // 1. Recuperiamo la trasformazione da Locked Space a Pinned/Frozen Space
+                Pose pinnedFromLocked = pin.AlignmentManager.PinnedFromLocked;
+
+                // 2. Trasformiamo la posizione fisica memorizzata (pin.LockedPose.position) nello spazio globale corrente
+                Vector3 currentPhysicalAnchorPos = pinnedFromLocked.position + (pinnedFromLocked.rotation * pin.LockedPose.position);
+
+                float distance = Vector3.Distance(currentPhysicalAnchorPos, marker.Position);
+
+                if (distance > threshold)
+                {
+                    Debug.Log($"Marker spostato fisicamente! Distanza: {distance}");
+                    UpdateMarker(gameObject, marker, true);
+                }
+                else
+                {
+                    Debug.Log($"Micro-correzione WLT applicata. Distanza: {distance}");
+                    // Passiamo false: aggiorna solo lo SpacePin, non il Transform/Save
+                    UpdateMarker(gameObject, marker, false);
+                }
+            }
+        }
+
+        /*public void UpdateMarker(GameObject obj, ArUcoMarkerDetection.Marker marker, bool updateTransform)
+        {
+            SpacePin spacePin = obj.GetComponent<SpacePin>();
+            if (spacePin == null)
+            {
+                Debug.LogError("Nessuno SpacePin trovato su " + obj.name);
+                return;
+            }
+
+            // Creiamo la posa fisica letta dal visore in questo istante
+            Pose physicalPose = new Pose(marker.Position, marker.Rotation);
+
+            // CASO A: Il marker è nuovo o è stato spostato
+            if (updateTransform)
+            {
+                // 1. Spostiamo l'oggetto di Unity
+                obj.transform.SetPositionAndRotation(marker.Position, marker.Rotation);
+
+                // 2. Diciamo al WLT: "Guarda che ho cambiato la sua posizione teorica"
+                spacePin.ResetModelingPose();
+
+                // 3. Salviamo (nota: in futuro salva relativo alla root, ma per ora va bene)
+                SaveInPlayerPrefs(marker.Position, marker.Rotation, marker.Id);
+                Debug.Log("Update Transform e Database per " + obj.name);
+            }
+
+            // CASO A e CASO B (SEMPRE): Diciamo al WLT dove si trova il marker nella realtà
+            spacePin.SetFrozenPose(physicalPose);
+
+            // Forziamo il WLT a calcolare la deformazione spaziale
+            WorldLockingManager.GetInstance().AlignmentManager.SendAlignmentAnchors();
+
+            // Salviamo per la persistenza (Versione 1.5.9)
+            WorldLockingManager.GetInstance().Save();
+
+            Debug.Log("SpacePin aggiornato fisicamente per " + obj.name);
+        }*/
+
+        public void UpdateMarker(GameObject obj, ArUcoMarkerDetection.Marker marker, bool updateTransform)
+        {
+            SpacePin spacePin = obj.GetComponent<SpacePin>();
+            if (spacePin == null)
+            {
+                Debug.LogError("Nessuno SpacePin trovato su " + obj.name);
+                return;
+            }
+
+            // Creiamo la posa fisica letta dal visore in questo istante
+            Pose physicalPose = new Pose(marker.Position, marker.Rotation);
+
+            // CASO A: Il marker è stato spostato fisicamente sul muro
+            if (updateTransform)
+            {
+                // 1. Spostiamo l'oggetto di Unity nella nuova posizione reale
+                obj.transform.SetPositionAndRotation(marker.Position, marker.Rotation);
+
+                // 2. Diciamo al WLT: "Guarda che ho cambiato la sua posizione teorica (virtuale)"
+                spacePin.ResetModelingPose();
+
+                // 3. Salviamo nei PlayerPrefs (ora calcolerà l'offset relativo alla globalRoot in automatico!)
+                int id = marker.Id; // Assicurati che marker.Id sia l'int corretto
+                SaveInPlayerPrefs(marker.Position, marker.Rotation, id);
+
+                // 4. Diciamo al WLT dove si trova il marker nella realtà
+                spacePin.SetFrozenPose(physicalPose);
+
+                // 5. FORZIAMO il ricalcolo della mappa elastica (solo perché il marker si è spostato di posizione)
+                WorldLockingManager.GetInstance().AlignmentManager.SendAlignmentAnchors();
+
+                // 6. Salviamo la sessione WLT su disco (operazione pesante, fatta solo all'occorrenza)
+                WorldLockingManager.GetInstance().Save();
+
+                Debug.Log($"[WLT] HARD UPDATE: Marker {obj.name} spostato. Transform, WLT e DB aggiornati.");
+            }
+            // CASO B: Il marker è fermo, stiamo solo correggendo il microscopico drift/rumore del visore
+            else
+            {
+                // Diciamo SOLO al WLT dove si trova il marker in questo millesimo di secondo.
+                // Il WLT integrerà questo dato nel suo algoritmo di smoothing in background senza bloccare il frame.
+                spacePin.SetFrozenPose(physicalPose);
+
+                Debug.Log($"[WLT] SOFT UPDATE: Micro-correzione drift applicata a {obj.name}");
+            }
+        }
+
+        //public void SaveInPlayerPrefs(Vector3 markerPos, Quaternion markerRot, int id)
+        //{
+        //    string positionLocal = markerPos.x.ToString(CultureInfo.InvariantCulture) + "_" +
+        //        markerPos.y.ToString(CultureInfo.InvariantCulture) + "_" +
+        //        markerPos.z.ToString(CultureInfo.InvariantCulture);
+
+        //    string rotationLocal = markerRot.x.ToString(CultureInfo.InvariantCulture) + "_" +
+        //        markerRot.y.ToString(CultureInfo.InvariantCulture) + "_" +
+        //        markerRot.z.ToString(CultureInfo.InvariantCulture) + "_" +
+        //        markerRot.w.ToString(CultureInfo.InvariantCulture);
+
+        //    string transformLocal = positionLocal + "/" + rotationLocal;
+
+        //    if (id == 0)
+        //    {
+        //        PlayerPrefs.SetString(globalRoot.name, transformLocal);
+        //        Debug.Log("SaveGlobalRoot");
+        //    }
+        //    else
+        //    {
+        //        PlayerPrefs.SetString("Marker_" + id.ToString(), transformLocal);
+        //        Debug.Log("Salvataggio Marker_" + id.ToString());
+        //    }
+        //}
+
         public void SaveInPlayerPrefs(Vector3 markerPos, Quaternion markerRot, int id)
         {
-            string positionLocal = markerPos.x.ToString(CultureInfo.InvariantCulture) + "_" +
-                markerPos.y.ToString(CultureInfo.InvariantCulture) + "_" +
-                markerPos.z.ToString(CultureInfo.InvariantCulture);
+            // Di base teniamo i valori passati (es. per la globalRoot)
+            Vector3 posToSave = markerPos;
+            Quaternion rotToSave = markerRot;
 
-            string rotationLocal = markerRot.x.ToString(CultureInfo.InvariantCulture) + "_" +
-                markerRot.y.ToString(CultureInfo.InvariantCulture) + "_" +
-                markerRot.z.ToString(CultureInfo.InvariantCulture) + "_" +
-                markerRot.w.ToString(CultureInfo.InvariantCulture);
+            // SE è un marker secondario (id != 0), lo salviamo RELATIVO alla globalRoot
+            if (id != 0 && globalRoot != null)
+            {
+                // Sottraiamo la posizione della globalRoot e annulliamo la sua rotazione
+                posToSave = Quaternion.Inverse(globalRoot.transform.rotation) * (markerPos - globalRoot.transform.position);
+
+                // Calcoliamo la rotazione relativa rispetto alla globalRoot
+                rotToSave = Quaternion.Inverse(globalRoot.transform.rotation) * markerRot;
+            }
+
+            // Da qui in poi la tua logica di formattazione stringa rimane IDENTICA, 
+            // ma usa posToSave e rotToSave al posto dei parametri originali.
+            string positionLocal = posToSave.x.ToString(CultureInfo.InvariantCulture) + "_" +
+                posToSave.y.ToString(CultureInfo.InvariantCulture) + "_" +
+                posToSave.z.ToString(CultureInfo.InvariantCulture);
+
+            string rotationLocal = rotToSave.x.ToString(CultureInfo.InvariantCulture) + "_" +
+                rotToSave.y.ToString(CultureInfo.InvariantCulture) + "_" +
+                rotToSave.z.ToString(CultureInfo.InvariantCulture) + "_" +
+                rotToSave.w.ToString(CultureInfo.InvariantCulture);
 
             string transformLocal = positionLocal + "/" + rotationLocal;
 
             if (id == 0)
             {
                 PlayerPrefs.SetString(globalRoot.name, transformLocal);
-                Debug.Log("SaveGlobalRoot");
+                Debug.Log("SaveGlobalRoot (Posizione Assoluta)");
             }
             else
             {
                 PlayerPrefs.SetString("Marker_" + id.ToString(), transformLocal);
-                Debug.Log("Salvataggio Marker_" + id.ToString());
+                Debug.Log("Salvataggio Marker_" + id.ToString() + " (Relativo a GlobalRoot)");
             }
         }
 
