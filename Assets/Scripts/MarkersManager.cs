@@ -10,7 +10,10 @@ using UnityEngine.XR.OpenXR.Input;
 public class MarkersManager : MonoBehaviour
 {
     Dictionary<int, GameObject> markersCreated = new Dictionary<int, GameObject>();
+    // Traccia quali marker devono forzare un Hard Update alla prossima inquadratura
+    public HashSet<int> markersNeedingHardReset = new HashSet<int>();
 
+    [SerializeField] private AppManager appManager;
     [SerializeField] private GameObject cubePlaceHolder;
     [SerializeField] private GameObject globalRoot;
 
@@ -29,64 +32,6 @@ public class MarkersManager : MonoBehaviour
     {
         
     }
-
-
-    //public void SpawnMarkers(StorageContainerView storageELement)
-    //{
-    //    GameObject newMarker = new GameObject("Marker_" + storageELement.data.markerId.ToString());
-    //    newMarker.transform.SetParent(this.gameObject.transform, false);
-    //    newMarker.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
-
-    //    markersCreated.Add(storageELement.data.markerId, newMarker);
-
-    //    string pose = PlayerPrefs.GetString(newMarker.name);
-    //    if (!string.IsNullOrEmpty(pose))
-    //    {
-    //        Debug.Log("PlayerPrefs di Marker_" + storageELement.data.markerId.ToString());
-    //        SetTransformMarker(newMarker, pose);
-    //    }
-
-    //    if (!string.IsNullOrEmpty(storageELement.data.worldTransform))
-    //    {
-    //        SetRoomByMarker(storageELement, newMarker);
-    //    }
-    //    else
-    //    {
-    //        storageELement.transform.SetPositionAndRotation(newMarker.transform.position, newMarker.transform.rotation);
-    //    }
-
-    //    /*ConstraintSource source = new ConstraintSource
-    //    {
-    //        sourceTransform = globalRoot.transform,
-    //        weight = 1f
-    //    };
-
-    //    ParentConstraint pc = newMarker.AddComponent<ParentConstraint>();
-
-    //    int index = pc.AddSource(source);
-
-    //    // Calcola gli offset
-    //    Vector3 translationOffset =
-    //        Quaternion.Inverse(globalRoot.transform.rotation) *
-    //        (newMarker.transform.position - globalRoot.transform.position);
-
-    //    Quaternion rotationOffset =
-    //        Quaternion.Inverse(globalRoot.transform.rotation) *
-    //        newMarker.transform.rotation;
-
-    //    // Assegna gli offset
-    //    pc.SetTranslationOffset(index, translationOffset);
-    //    pc.SetRotationOffset(index, rotationOffset.eulerAngles);
-
-    //    // Attiva
-    //    pc.locked = true;
-    //    pc.constraintActive = true;*/
-
-    //    // cubo per debug
-    //    GameObject cube = Instantiate(cubePlaceHolder, Vector3.zero, Quaternion.identity, newMarker.transform);
-    //    cube.transform.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
-    //    cube.name = "CubeMarker_" + storageELement.data.markerId.ToString();
-    //}
 
     public void SpawnMarkers(StorageContainerView storageELement)
     {
@@ -220,6 +165,60 @@ public class MarkersManager : MonoBehaviour
         storageELement.transform.position = marker.transform.TransformPoint(localPos);
         storageELement.transform.rotation = marker.transform.rotation * localRot;
     }
+
+    public void UpdateAllMarkersFromGlobalRoot()
+    {
+        if (globalRoot == null)
+        {
+            UnityEngine.Debug.LogError("Impossibile aggiornare: Global Root (Marker 0) non assegnata.");
+            return;
+        }
+
+        // 1. CICLO SU TUTTI I MARKER SECONDARI ATTIVI
+        foreach (var kvp in markersCreated)
+        {
+            int markerId = kvp.Key;
+            GameObject markerObj = kvp.Value;
+
+
+            // 2. RECUPERO DELLA STRINGA POSE ORIGINARIA
+            // Recupera la stringa "pos_x_y_z/rot_x_y_z_w" salvata per questo specifico marker
+            string savedPoseString = PlayerPrefs.GetString(markerObj.name);
+
+            if (string.IsNullOrEmpty(savedPoseString))
+            {
+                UnityEngine.Debug.LogWarning($"Nessuna posa salvata trovata per il Marker ID: {markerId}");
+                continue;
+            }
+
+            // 3. AGGIORNAMENTO TRASFORM DEL MARKER (Usa la tua funzione)
+            SetTransformMarker(markerObj, savedPoseString);
+
+            // 4. NOTIFICA A WORLD LOCKING TOOLS (WLT)
+            // Diciamo allo SpacePin del marker che la sua posizione fisica nel mondo reale è cambiata
+            SpacePin markerSpacePin = markerObj.GetComponent<SpacePin>();
+            if (markerSpacePin != null)
+            {
+                markerSpacePin.ResetModelingPose();
+            }
+
+            // 5. SEGNALIAMO che questo marker è stato spostato virtualmente e richiede un Hard Update reale appena visto
+            markersNeedingHardReset.Add(markerId);
+
+            // 6. AGGIORNAMENTO DELLE ROOM ASSOCIATE A QUESTO MARKER
+            // Troviamo tutte le room/elementi agganciati a questo specifico marker
+            GameObject room = appManager.GetRoomByID(markerId); // <--- Sostituisci con la tua logica di filtri
+
+            if (room != null)
+            {
+                SetRoomByMarker(room.GetComponent<StorageContainerView>(), markerObj);
+            }
+        }
+
+        UnityEngine.Debug.Log("Riallineamento completo della stanza terminato con successo in base alla nuova Global Root.");
+    }
+
+
 
     public GameObject GetMarkerByID(int id)
     {

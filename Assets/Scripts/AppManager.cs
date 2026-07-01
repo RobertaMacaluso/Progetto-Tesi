@@ -211,50 +211,81 @@ public class AppManager : MonoBehaviour
             DirectionalIndicator directionalIndicator = A_Menu.solverIndicator.GetComponent<DirectionalIndicator>();
             float distance = Vector3.Distance(A_Menu.artifactTarget.transform.position, this.gameObject.transform.position);
             int d = Mathf.FloorToInt(distance);
-            if (d > 1)
-            {
-                distanceText.text = d.ToSafeString() + "m";
 
-                if (!directionalIndicator.enabled)
+            //if (directionalIndicator.DirectionalTarget == A_Menu.artifactTarget.transform)
+            //{
+                if (d > 1)
                 {
-                    //solverRenderer.enabled = true;
-                    //distancePlate.SetActive(false);
-                    A_Menu.canvasDistance.GetComponent<Follow>().enabled = false;
-                    directionalIndicator.enabled = true;
-                }
-            }  
-            else
-            {
-                distanceText.text = "<1m";
+                    distanceText.text = d.ToSafeString() + "m";
 
-                if (directionalIndicator.enabled)
-                {
-                    solverRenderer.enabled = false;
-                    distancePlate.SetActive(true);
-                    A_Menu.canvasDistance.GetComponent<Follow>().enabled = true;
-                    directionalIndicator.enabled = false;
+                    if (!directionalIndicator.enabled) // && directionalIndicator.DirectionalTarget == A_Menu.artifactTarget.transform)
+                    {
+                        //solverRenderer.enabled = true;
+                        //distancePlate.SetActive(false);
+                        A_Menu.canvasDistance.GetComponent<Follow>().enabled = false;
+                        directionalIndicator.enabled = true;
+                    }
                 }
-            }
-            
-            //if (!directionalIndicator.enabled)
-            //{ return; }
+                else
+                {
+                    distanceText.text = "<1m";
+
+                    if (directionalIndicator.enabled && directionalIndicator.DirectionalTarget == A_Menu.artifactTarget.transform)
+                    {
+                        solverRenderer.enabled = false;
+                        distancePlate.SetActive(true);
+                        A_Menu.canvasDistance.GetComponent<Follow>().enabled = true;
+                        
+                        //if (directionalIndicator.DirectionalTarget == A_Menu.artifactTarget.transform)
+                        directionalIndicator.enabled = false;
+                    }
+                }
+
+            //if (!directionalIndicator.DirectionalTarget == A_Menu.artifactTarget.transform)
+            //{
+            //    if (dire)
+            //    directionalIndicator.enabled = true;
+            //    return; 
+            //}
 
             if (solverRenderer.enabled == true && distancePlate.activeSelf) //solverRenderer.enabled == true && 
-            {
-                distancePlate.SetActive(false);
-                A_Menu.canvasDistance.GetComponent<Follow>().enabled = false;
-                A_Menu.canvasDistance.GetComponent<ParentConstraint>().enabled = true;
-                A_Menu.canvasDistance.transform.localPosition = Vector3.zero;
-                A_Menu.canvasDistance.transform.localScale = Vector3.one * 0.02f;
-                //Debug.Log("Scala 0.02");
-            }
+                {
+                    distancePlate.SetActive(false);
+                    A_Menu.canvasDistance.GetComponent<Follow>().enabled = false;
+                    A_Menu.canvasDistance.GetComponent<ParentConstraint>().enabled = true;
+                    A_Menu.canvasDistance.transform.localPosition = new Vector3(0f, 0.15f, 0f);
+                    A_Menu.canvasDistance.transform.localScale = Vector3.one * 0.02f;
+                    //Debug.Log("Scala 0.02");
+                }
 
-            if (solverRenderer.enabled == false && !distancePlate.activeSelf) //solverRenderer.enabled == false && 
-            {
-                distancePlate.SetActive(true);
-                A_Menu.canvasDistance.GetComponent<Follow>().enabled = true;
-                A_Menu.canvasDistance.GetComponent<ParentConstraint>().enabled = false;
-            }
+                if (solverRenderer.enabled == false && !distancePlate.activeSelf) //solverRenderer.enabled == false && 
+                {
+                    distancePlate.SetActive(true);
+                    A_Menu.canvasDistance.GetComponent<Follow>().enabled = true;
+                    A_Menu.canvasDistance.GetComponent<ParentConstraint>().enabled = false;
+                }
+            //}
+            //else if (directionalIndicator.DirectionalTarget == A_Menu.artifactIndicator.transform)
+            //{
+            //    if (d > 1)
+            //    {
+            //        distanceText.text = d.ToSafeString() + "m";
+            //    }
+            //    else
+            //    {
+            //        distanceText.text = "<1m";
+            //    }
+
+            //    if (distancePlate.activeSelf || !directionalIndicator.enabled)
+            //    {
+            //        distancePlate.SetActive(false);
+            //        directionalIndicator.enabled = true;
+            //        A_Menu.canvasDistance.GetComponent<Follow>().enabled = false;
+            //        A_Menu.canvasDistance.GetComponent<ParentConstraint>().enabled = true;
+            //        A_Menu.canvasDistance.transform.localPosition = new Vector3(0f, 0.15f, 0f);
+            //        A_Menu.canvasDistance.transform.localScale = Vector3.one * 0.02f;
+            //    }
+            //}
         }
     }
 
@@ -1513,6 +1544,7 @@ public class AppManager : MonoBehaviour
         A_Menu.stopNavigationButton.SetActive(true);
         A_Menu.solverIndicator.SetActive(true);
         A_Menu.solverIndicator.GetComponent<DirectionalIndicator>().enabled = true;
+        A_Menu.solverIndicator.GetComponent<DirectionalIndicator>().DirectionalTarget = A_Menu.artifactTarget.transform;
         //A_Menu.canvasDistance.SetActive(true);
         //A_Menu.canvasDistance.transform.SetParent(A_Menu.solverIndicator.transform);
         A_Menu.artifactTarget.GetComponent<Follow>().enabled = true;
@@ -1603,7 +1635,10 @@ public class AppManager : MonoBehaviour
             A_Menu.artifactTarget.GetComponent<ArtifactIndicator>().SetTargetPosition(currentPath[step]);
             A_Menu.artifactTarget.transform.position = currentPath[step].position;
             Debug.Log("Next step: " + step + " - " + currentPath[step].name);
+            A_Menu.canvasDistance.GetComponent<Follow>().enabled = false;
+            //distancePlate.SetActive(false);
             A_Menu.solverIndicator.GetComponent<DirectionalIndicator>().enabled = true;
+            solverRenderer.enabled = true;
             A_Menu.artifactTarget.SetActive(true);
             A_Menu.navigationText.SetActive(true);
             A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = artifactNavigation + currentPath[step].name;
@@ -1630,6 +1665,8 @@ public class AppManager : MonoBehaviour
             Debug.Log("Destinazione raggiunta! =)");
             //A_Menu.artifactTarget.SetActive(false);
             //A_Menu.solverIndicator.SetActive(false);
+            A_Menu.canvasDistance.GetComponent<Follow>().enabled = false;
+            A_Menu.solverIndicator.GetComponent<DirectionalIndicator>().enabled = true;
             A_Menu.artifactTarget.GetComponent<Follow>().enabled = false;
             A_Menu.artifactTarget.SetActive(true);
 
@@ -1673,8 +1710,10 @@ public class AppManager : MonoBehaviour
     {
         A_Menu.withdrawButton.SetActive(true);
         A_Menu.artifactTarget.SetActive(false);
-        A_Menu.solverIndicator.SetActive(false);
-        //A_Menu.canvasDistance.SetActive(false);
+        //A_Menu.solverIndicator.SetActive(false);
+
+        A_Menu.solverIndicator.GetComponent<DirectionalIndicator>().DirectionalTarget = A_Menu.artifactIndicator.transform;
+        A_Menu.solverIndicator.GetComponent<DirectionalIndicator>().enabled = true;
 
         // gestione indicatore reperto
         Artifact artifact = artifactSelected.GetComponent<ArtifactView>().data;
@@ -1683,6 +1722,7 @@ public class AppManager : MonoBehaviour
         Debug.Log("ArtifactSelected = " + artifact.name);
         Debug.Log("ShelfDeposit = " + shelfDeposit.name);
 
+        A_Menu.artifactIndicator.GetComponent<Follow>().enabled = false;
         A_Menu.artifactIndicator.SetActive(true);
         //A_Menu.artifactIndicator.GetComponent<Follow>().enabled = false;
         A_Menu.artifactIndicator.transform.SetParent(shelfDeposit.transform);
@@ -1719,6 +1759,8 @@ public class AppManager : MonoBehaviour
             A_Menu.artifactIndicator.transform.rotation =
                 shelfDeposit.transform.rotation * localRotation;
         }
+
+        A_Menu.artifactIndicator.GetComponent<Follow>().enabled = true;
 
         // scala dell'indicatore
         if (artifact.artifactWidth == 0 || artifact.artifactHeight == 0 || artifact.artifactDepth == 0)
