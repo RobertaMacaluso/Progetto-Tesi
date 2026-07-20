@@ -89,6 +89,7 @@ public class AppManager : MonoBehaviour
     private int step = 0;
     private readonly string indicatorTag = "Target";
     private List<int> currentRoomsID = new List<int>();
+    private List<Transform> elementsToExit = new List<Transform>();
     //private readonly List<Transform> depositPath = new();
     private VirtualizedScrollRectListTester vsrltDeposit;
     private TextMeshProUGUI distanceText;
@@ -1391,7 +1392,7 @@ public class AppManager : MonoBehaviour
     //gestione del pulsante per tornare indietro nelle varie situazioni in cui può essere cliccato
     public void BackButtonArtifact()
     {
-        Debug.Log("Deposit List value: " +  vsrltDeposit.GetForDeposit());
+        //Debug.Log("Deposit List value: " +  vsrltDeposit.GetForDeposit());
         if (!vsrltDeposit.GetForDeposit())
         {
             A_Menu.artifactVirualizedList.gameObject.SetActive(true);
@@ -1413,13 +1414,13 @@ public class AppManager : MonoBehaviour
                 while (allArtifacts[i] != artifactSelected)
                 { i++; }
 
-                Debug.Log(DateTime.Now.ToString("HH:mm:ss.fff") + ". Deposit list - Attiva");
+                //Debug.Log(DateTime.Now.ToString("HH:mm:ss.fff") + ". Deposit list - Attiva");
                 OnArtifactButtonClicked(i);
             }
             else
             { 
                 artifactSelected = null;
-                Debug.Log(DateTime.Now.ToString("HH:mm:ss.fff") + ". Deposit list - Non attiva");
+                //Debug.Log(DateTime.Now.ToString("HH:mm:ss.fff") + ". Deposit list - Non attiva");
             }
             StopNavigation();
             A_Menu.depositList.SetActive(false);
@@ -1552,7 +1553,8 @@ public class AppManager : MonoBehaviour
 
         //se parte del percorso del nuovo reperto è uguale a quello del reperto precedente si saltano quei passaggi
         step = 0;
-        
+        elementsToExit.Clear();
+
         //if (currentRoomsID.Count > 0)
         //{
         //    SkipSteps();
@@ -1582,9 +1584,41 @@ public class AppManager : MonoBehaviour
                     }*/
                     if (step < recentPath.Count)
                     {
+                        for (int i = step; i < recentPath.Count; i++)
+                        {
+                            if (recentPath[i].gameObject.GetComponent<StorageContainerView>().data.isRoom)
+                                elementsToExit.Insert(0, recentPath[i]);
+                        }
+
+                        Debug.Log($"Elements to exit: {string.Join(", ", elementsToExit.Select(x => x.name))}");
                         recentPath.RemoveRange(step, recentPath.Count - step);
                     }
                     Debug.Log($"Recent path: {string.Join(", ", recentPath.Select(x => x.name))}");
+
+                    // uscita da room
+                    //foreach (var room in rooms)
+                    //{
+                    //    bool found = currentPath.Any(t =>
+                    //        t.GetComponent<StorageContainerView>().data.id == room.Key);
+
+                    //    if (!found)
+                    //        elementsToExit.Add(room.Value.transform);
+                    //}
+                    //Debug.Log("CurrentRooms count: " + currentRoomsID.Count);
+                    //int i = 0;
+                    //foreach (int roomId in currentRoomsID)
+                    //{
+                        
+                    //    bool found = currentPath.Any(t =>
+                    //        t.gameObject.GetComponent<StorageContainerView>().data.id == roomId);
+
+                    //    if (!found && rooms.TryGetValue(roomId, out GameObject room))
+                    //    {
+                    //        i++;
+                    //        elementsToExit.Add(room.transform);
+                    //    }
+                    //}
+                    //Debug.Log($"Elements to exit ({i}): {string.Join(", ", elementsToExit.Select(x => x.name))}");
                     break;
                 }
             }
@@ -1597,39 +1631,72 @@ public class AppManager : MonoBehaviour
             }
         }
 
-        if (currentRoomsID.Count > 0)
-        {
-            SkipSteps();
-            //return;
-        }
+            if (currentRoomsID.Count > 0 && elementsToExit.Count == 0)
+            {
+                SkipSteps();
+                //return;
+            }
 
-        NextStep();
+            NextStep();
     }
 
     private void SkipSteps()
     {
         int index = 0;
+        //bool sameRoom = false;
         foreach (var localStep in currentPath)
         {
             index++;
             if ( currentRoomsID.Contains(localStep.gameObject.GetComponent<StorageContainerView>().data.id) && step < index)
             {
                 step = index;
+                //sameRoom = true;
                 Debug.Log("Già nella stanza. Step = " + step);
                 //break;
             }
             
         }
 
-        //for (int i = 0; i < index; i++)
+        //if (!sameRoom)
         //{
-        //    NextStep();
+        //    Debug.Log("Devo cambiare stanza");
+            
+        //    //List<Transform> elementsToExit = new List<Transform>();
+
+        //    foreach (var actualStep in recentPath)
+        //    {
+        //        currentPath.Insert(0, actualStep);
+        //        elementsToExit.Add(actualStep);
+        //    }
+
+        //    Debug.Log(string.Join(", ", elementsToExit));
         //}
     }
 
     //gestione del passaggio del prossimo punto da raggiungere (chiamata anche dal bottone Skip Step nella scena) e del punto di arrivo
     public void NextStep()
     {
+        //if (elementsToExit.Count > 0)
+        //    elementsToExit.RemoveAt(0);
+
+        if (elementsToExit.Count > 0)
+        {
+            //elementsToExit.RemoveAt(0);
+
+            A_Menu.artifactTarget.GetComponent<ArtifactIndicator>().SetTargetPosition(elementsToExit[0]);
+            A_Menu.artifactTarget.transform.position = elementsToExit[0].position;
+            Debug.Log("Next step: " + step + " - " + elementsToExit[0].name);
+            A_Menu.canvasDistance.GetComponent<Follow>().enabled = false;
+            //distancePlate.SetActive(false);
+            A_Menu.solverIndicator.GetComponent<DirectionalIndicator>().enabled = true;
+            solverRenderer.enabled = true;
+            A_Menu.artifactTarget.SetActive(true);
+            A_Menu.navigationText.SetActive(true);
+            A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = artifactNavigation + elementsToExit[0].name;
+            elementsToExit.RemoveAt(0);
+            return;
+        }
+
         if (step < currentPath.Count)
         {
             A_Menu.artifactTarget.GetComponent<ArtifactIndicator>().SetTargetPosition(currentPath[step]);
@@ -1642,6 +1709,20 @@ public class AppManager : MonoBehaviour
             A_Menu.artifactTarget.SetActive(true);
             A_Menu.navigationText.SetActive(true);
             A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = artifactNavigation + currentPath[step].name;
+
+            // gestione percorso a ritroso
+            //if (step-1 >= 0)
+            //{
+            //    if (elementsToExit.Contains(currentPath[step - 1]))
+            //    {
+            //        // se lo step raggiunto faceva parte del percorso a ritroso lo elimino dal percorso da fare
+            //        elementsToExit.Remove(currentPath[step - 1]);
+            //        currentPath.Remove(currentPath[step - 1]);
+            //        recentPath.Remove(currentPath[step - 1]);
+
+            //        Debug.Log("Percorso rimanente: " + string.Join(", ", currentPath));
+            //    }
+            //}
 
             if (currentPath[step].gameObject.TryGetComponent<StorageContainerView>(out var st) )
             {
@@ -1825,7 +1906,7 @@ public class AppManager : MonoBehaviour
         {
             A_Menu.artifactTarget.SetActive(false);
             A_Menu.triggerEntered.Play();
-            Debug.Log("Collider di " + other.gameObject.name + ". Step = " + step);
+            //Debug.Log("Collider di " + other.gameObject.name + ". Step = " + step);
             NextStep();
         }
 
@@ -1907,7 +1988,7 @@ public class AppManager : MonoBehaviour
 
         if (A_Menu.artifactVirualizedList.gameObject.activeSelf)
         {
-            Debug.Log("Deposit list - navigation if");
+            //Debug.Log("Deposit list - navigation if");
             A_Menu.artifactTitle.GetComponent<TextMeshProUGUI>().text = artifactGeneralText;
         }
         else
@@ -1954,7 +2035,7 @@ public class AppManager : MonoBehaviour
         //VirtualizedScrollRectListTester vsrltDeposit = A_Menu.depositList.GetComponentInChildren<VirtualizedScrollRectListTester>();
         vsrltDeposit.SetForDeposit(false);
 
-        Debug.Log("Deposit list - Stop Navigation");
+        //Debug.Log("Deposit list - Stop Navigation");
     }
 
     public void ResetPath()

@@ -92031,6 +92031,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 4d451963f5452a347aa4e2a242e10b39, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  appManager: {fileID: 0}
   cubePlaceHolder: {fileID: 5387156726585428255, guid: 13ef163941d5bc84ca75acf273d24831,
     type: 3}
   globalRoot: {fileID: 183801883}
@@ -105106,7 +105107,7 @@ MonoBehaviour:
   gutter: 4
   margin: 4
   trailingSpace: 0
-  itemCount: 14
+  itemCount: 12
 --- !u!4 &4049211494269730958
 Transform:
   m_ObjectHideFlags: 0
@@ -105942,7 +105943,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -1.9999695}
+  m_AnchoredPosition: {x: 0, y: -1.9998932}
   m_SizeDelta: {x: 0, y: 4}
   m_Pivot: {x: 0, y: 0.5}
 --- !u!114 &4609586032541029188
@@ -110976,7 +110977,7 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 5582626526684711792}
   m_HandleRect: {fileID: 5253841396296440117}
   m_Direction: 2
-  m_Value: 0.99998474
+  m_Value: 0.9999733
   m_Size: 0.9802954
   m_NumberOfSteps: 0
   m_OnValueChanged:
