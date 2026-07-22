@@ -1693,7 +1693,7 @@ public class AppManager : MonoBehaviour
             A_Menu.artifactTarget.SetActive(true);
             A_Menu.navigationText.SetActive(true);
             A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = artifactNavigation + elementsToExit[0].name;
-            elementsToExit.RemoveAt(0);
+            //elementsToExit.RemoveAt(0);
             return;
         }
 
@@ -1907,6 +1907,13 @@ public class AppManager : MonoBehaviour
             A_Menu.artifactTarget.SetActive(false);
             A_Menu.triggerEntered.Play();
             //Debug.Log("Collider di " + other.gameObject.name + ". Step = " + step);
+
+            if (elementsToExit.Count > 0)
+            {
+                elementsToExit.RemoveAt(0);
+                Debug.Log("Rimosso elemento da cui uscire");
+            }
+
             NextStep();
         }
 
@@ -1921,6 +1928,13 @@ public class AppManager : MonoBehaviour
         {
             currentRoomsID.Add(storageContainerView.data.id);
             Debug.Log("currentRoomsID = " + string.Join(", ", currentRoomsID));
+
+            // se sto navigando si aggiunge un elemento in più da cui "uscire"
+            if (A_Menu.artifactTarget.activeSelf)
+            {
+                elementsToExit.Insert(0, other.gameObject.transform);
+                NextStep();
+            }
         }
     }
 
@@ -1954,6 +1968,18 @@ public class AppManager : MonoBehaviour
                 {
                     A_Menu.artifactTarget.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
                     A_Menu.artifactTarget.GetComponent<Follow>().enabled = true;
+                    NextStep();
+                }
+            }
+            else
+            {
+                if (A_Menu.artifactTarget.activeSelf)
+                {
+                    A_Menu.artifactTarget.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+                    A_Menu.artifactTarget.GetComponent<Follow>().enabled = true;
+
+                    elementsToExit.Insert(0, other.gameObject.transform);
+
                     NextStep();
                 }
             }
