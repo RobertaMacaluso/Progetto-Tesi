@@ -85,11 +85,12 @@ public class AppManager : MonoBehaviour
     private readonly string artifactNavigation = "Dirigersi verso: ";
     private readonly string[] targetReached = new string[2] {"Reperto raggiunto!", "Scaffale raggiunto. Posizionare il reperto e poi confermare"};
     private readonly List<Transform> currentPath = new();
-    private List<Transform> recentPath = new();
     private int step = 0;
     private readonly string indicatorTag = "Target";
     private List<int> currentRoomsID = new List<int>();
-    private List<Transform> elementsToExit = new List<Transform>();
+    private List<Transform> currentRoomHierarchy = new List<Transform>();
+    private List<Transform> exitPath = new();
+    private int exitStep = 0;
     //private readonly List<Transform> depositPath = new();
     private VirtualizedScrollRectListTester vsrltDeposit;
     private TextMeshProUGUI distanceText;
@@ -1551,240 +1552,232 @@ public class AppManager : MonoBehaviour
         A_Menu.artifactTarget.GetComponent<Follow>().enabled = true;
         A_Menu.artifactTarget.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
 
-        //se parte del percorso del nuovo reperto è uguale a quello del reperto precedente si saltano quei passaggi
-        step = 0;
-        elementsToExit.Clear();
+        exitStep = 0;
+        step = CalculateCurrentStep();
 
-        //if (currentRoomsID.Count > 0)
-        //{
-        //    SkipSteps();
-        //    //return;
-        //}
+        RecalculateElementsToExit();
 
-        if (recentPath.Count > 0)
-        {
-            Debug.Log("recentPath.Count > 0");
-            while (step < currentPath.Count && step < recentPath.Count)
-            {
-                if (currentPath[step].name == recentPath[step].name)
-                {
-                    Debug.Log("Passaggio saltato. " + currentPath[step].name + " - " + recentPath[step].name);
-                    step++;
-                }
-                else
-                {
-                    /*for (int i = 0; i < recentPath.Count; i++)
-                    {
-                        if (i >= step)
-                        {
-                            Debug.Log("Removing " + recentPath[i].name);
-                            recentPath.RemoveAt(i);
-                            i--;
-                        }
-                    }*/
-                    if (step < recentPath.Count)
-                    {
-                        for (int i = step; i < recentPath.Count; i++)
-                        {
-                            if (recentPath[i].gameObject.GetComponent<StorageContainerView>().data.isRoom)
-                                elementsToExit.Insert(0, recentPath[i]);
-                        }
-
-                        Debug.Log($"Elements to exit: {string.Join(", ", elementsToExit.Select(x => x.name))}");
-                        recentPath.RemoveRange(step, recentPath.Count - step);
-                    }
-                    Debug.Log($"Recent path: {string.Join(", ", recentPath.Select(x => x.name))}");
-
-                    // uscita da room
-                    //foreach (var room in rooms)
-                    //{
-                    //    bool found = currentPath.Any(t =>
-                    //        t.GetComponent<StorageContainerView>().data.id == room.Key);
-
-                    //    if (!found)
-                    //        elementsToExit.Add(room.Value.transform);
-                    //}
-                    //Debug.Log("CurrentRooms count: " + currentRoomsID.Count);
-                    //int i = 0;
-                    //foreach (int roomId in currentRoomsID)
-                    //{
-                        
-                    //    bool found = currentPath.Any(t =>
-                    //        t.gameObject.GetComponent<StorageContainerView>().data.id == roomId);
-
-                    //    if (!found && rooms.TryGetValue(roomId, out GameObject room))
-                    //    {
-                    //        i++;
-                    //        elementsToExit.Add(room.transform);
-                    //    }
-                    //}
-                    //Debug.Log($"Elements to exit ({i}): {string.Join(", ", elementsToExit.Select(x => x.name))}");
-                    break;
-                }
-            }
-
-            if (currentPath.Count == recentPath.Count)
-            {
-                Debug.Log("Step--");
-                step--;
-                recentPath.RemoveRange(step, recentPath.Count - step);
-            }
-        }
-
-            if (currentRoomsID.Count > 0 && elementsToExit.Count == 0)
-            {
-                SkipSteps();
-                //return;
-            }
-
-            NextStep();
+        NextStep();
     }
 
-    private void SkipSteps()
-    {
-        int index = 0;
-        //bool sameRoom = false;
-        foreach (var localStep in currentPath)
-        {
-            index++;
-            if ( currentRoomsID.Contains(localStep.gameObject.GetComponent<StorageContainerView>().data.id) && step < index)
-            {
-                step = index;
-                //sameRoom = true;
-                Debug.Log("Già nella stanza. Step = " + step);
-                //break;
-            }
-            
-        }
-
-        //if (!sameRoom)
-        //{
-        //    Debug.Log("Devo cambiare stanza");
-            
-        //    //List<Transform> elementsToExit = new List<Transform>();
-
-        //    foreach (var actualStep in recentPath)
-        //    {
-        //        currentPath.Insert(0, actualStep);
-        //        elementsToExit.Add(actualStep);
-        //    }
-
-        //    Debug.Log(string.Join(", ", elementsToExit));
-        //}
-    }
-
-    //gestione del passaggio del prossimo punto da raggiungere (chiamata anche dal bottone Skip Step nella scena) e del punto di arrivo
+    //gestione del passaggio del prossimo punto da raggiungere
     public void NextStep()
     {
-        //if (elementsToExit.Count > 0)
-        //    elementsToExit.RemoveAt(0);
-
-        if (elementsToExit.Count > 0)
+        if (exitStep < exitPath.Count)
         {
-            //elementsToExit.RemoveAt(0);
-
-            A_Menu.artifactTarget.GetComponent<ArtifactIndicator>().SetTargetPosition(elementsToExit[0]);
-            A_Menu.artifactTarget.transform.position = elementsToExit[0].position;
-            Debug.Log("Next step: " + step + " - " + elementsToExit[0].name);
-            A_Menu.canvasDistance.GetComponent<Follow>().enabled = false;
-            //distancePlate.SetActive(false);
-            A_Menu.solverIndicator.GetComponent<DirectionalIndicator>().enabled = true;
-            solverRenderer.enabled = true;
-            A_Menu.artifactTarget.SetActive(true);
-            A_Menu.navigationText.SetActive(true);
-            A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = artifactNavigation + elementsToExit[0].name;
-            //elementsToExit.RemoveAt(0);
+            SetNavigationTarget(exitPath[exitStep], true);
             return;
         }
 
         if (step < currentPath.Count)
         {
-            A_Menu.artifactTarget.GetComponent<ArtifactIndicator>().SetTargetPosition(currentPath[step]);
-            A_Menu.artifactTarget.transform.position = currentPath[step].position;
-            Debug.Log("Next step: " + step + " - " + currentPath[step].name);
-            A_Menu.canvasDistance.GetComponent<Follow>().enabled = false;
-            //distancePlate.SetActive(false);
-            A_Menu.solverIndicator.GetComponent<DirectionalIndicator>().enabled = true;
-            solverRenderer.enabled = true;
-            A_Menu.artifactTarget.SetActive(true);
-            A_Menu.navigationText.SetActive(true);
-            A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = artifactNavigation + currentPath[step].name;
+            SetNavigationTarget(currentPath[step], false);
+            return;
+        }
 
-            // gestione percorso a ritroso
-            //if (step-1 >= 0)
-            //{
-            //    if (elementsToExit.Contains(currentPath[step - 1]))
-            //    {
-            //        // se lo step raggiunto faceva parte del percorso a ritroso lo elimino dal percorso da fare
-            //        elementsToExit.Remove(currentPath[step - 1]);
-            //        currentPath.Remove(currentPath[step - 1]);
-            //        recentPath.Remove(currentPath[step - 1]);
+        DestinationReached();
+    }
 
-            //        Debug.Log("Percorso rimanente: " + string.Join(", ", currentPath));
-            //    }
-            //}
+    private void TestHierarchy()
+    {
+        var hierarchy = GetCurrentHierarchy();
 
-            if (currentPath[step].gameObject.TryGetComponent<StorageContainerView>(out var st) )
+        Debug.Log(
+            "Current hierarchy: " +
+            string.Join(" -> ", hierarchy.Select(x => x.name))
+        );
+    }
+
+    private List<Transform> GetCurrentHierarchy()
+    {
+        List<Transform> bestHierarchy = new List<Transform>();
+
+        if (currentRoomsID.Count == 0)
+            return bestHierarchy;
+
+
+        foreach (int id in currentRoomsID)
+        {
+            if (!spawnedShelves.TryGetValue(id, out GameObject currentObject))
+            {
+                Debug.LogWarning("Impossibile trovare StorageContainer con ID: " + id);
+                continue;
+            }
+
+
+            List<Transform> hierarchy = new List<Transform>();
+
+            Transform current = currentObject.transform;
+
+
+            while (current != null)
+            {
+                if (current.TryGetComponent<StorageContainerView>(out var storage))
+                {
+                    hierarchy.Insert(0, current);
+                }
+
+                current = current.parent;
+            }
+
+
+            /*
+             * Tengo la gerarchia più profonda.
+             * In pratica quella relativa al container più interno
+             * in cui l'utente si trova.
+             */
+            if (hierarchy.Count > bestHierarchy.Count)
+            {
+                bestHierarchy = hierarchy;
+            }
+        }
+
+
+        return bestHierarchy;
+    }
+
+    private void RecalculateElementsToExit()
+    {
+        exitPath.Clear();
+        exitStep = 0;
+
+        List<Transform> currentHierarchy = GetCurrentHierarchy();
+
+        if (currentHierarchy.Count == 0)
+            return;
+
+        /*
+         * Trovo fino a dove il percorso attuale dell'utente
+         * coincide con il percorso del reperto.
+         */
+        int commonIndex = -1;
+
+        int max = Mathf.Min(currentHierarchy.Count, currentPath.Count);
+
+        for (int i = 0; i < max; i++)
+        {
+            if (currentHierarchy[i] == currentPath[i])
+            {
+                commonIndex = i;
+            }
+            else
+            {
+                break;
+            }
+        }
+
+        /*
+         * Tutto quello che è dopo il punto comune
+         * nella gerarchia dell'utente deve essere abbandonato.
+         */
+        for (int i = currentHierarchy.Count - 1; i > commonIndex; i--)
+        {
+            exitPath.Add(currentHierarchy[i]);
+        }
+
+
+        Debug.Log(
+            "ExitPath: " +
+            string.Join(", ", exitPath.Select(x => x.name))
+        );
+
+        if (exitStep > exitPath.Count)
+            exitStep = exitPath.Count;
+    }
+
+    private int CalculateCurrentStep()
+    {
+        for (int i = 0; i < currentPath.Count; i++)
+        {
+            StorageContainerView view;
+
+            if (!currentPath[i].TryGetComponent(out view))
+                return i;
+
+            // Gli elementi con trigger (stanze, corridoi...)
+            if (view.data.isRoom)
+            {
+                if (currentRoomsID.Contains(view.data.id))
+                    continue;
+            }
+
+            // Il primo elemento non ancora raggiunto
+            return i;
+        }
+
+        return currentPath.Count;
+    }
+
+    private void SetNavigationTarget(Transform target, bool isExit)
+    {
+        A_Menu.artifactTarget.GetComponent<ArtifactIndicator>()
+            .SetTargetPosition(target);
+
+        A_Menu.artifactTarget.transform.position = target.position;
+
+        Debug.Log(
+            isExit
+            ? $"Exit step {exitStep}: {target.name}"
+            : $"Next step {step}: {target.name}"
+        );
+
+
+        A_Menu.canvasDistance.GetComponent<Follow>().enabled = false;
+        A_Menu.solverIndicator.GetComponent<DirectionalIndicator>().enabled = true;
+        solverRenderer.enabled = true;
+
+        A_Menu.artifactTarget.SetActive(true);
+        A_Menu.navigationText.SetActive(true);
+
+        A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text =
+            artifactNavigation + target.name;
+
+
+        if (!isExit)
+        {
+            if (target.TryGetComponent<StorageContainerView>(out var st))
             {
                 if (st.data.GetIsShelf())
                 {
                     A_Menu.artifactTarget.GetComponent<Follow>().enabled = false;
-                    A_Menu.artifactTarget.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
-                    Debug.Log("Rotazione step = " + step);
-                }
-                    
-            }
+                    A_Menu.artifactTarget.transform.rotation =
+                        Quaternion.Euler(90f, 0f, 0f);
 
-            //Ogni volta che si raggiunge la freccia target quel passaggio (che corrisponde a step - 1) viene aggiunto al recentPath.
-            //La seconda condizione dell'if serve ad evitare doppioni quando si inizia la navigazione saltando gli step già fatti per l'ultimo reperto !recentPath.Contains(currentPath[step - 1])
-            if (step - 1 >= 0 && recentPath.LastOrDefault() != currentPath[step - 1])
-                recentPath.Add(currentPath[step - 1]);
-            Debug.Log($"Recent path: {string.Join(", ", recentPath.Select(x => x.name))}");
+                    Debug.Log("Rotazione shelf step = " + step);
+                }
+            }
         }
+    }
+
+    private void DestinationReached()
+    {
+        Debug.Log("Destinazione raggiunta! =)");
+
+        A_Menu.canvasDistance.GetComponent<Follow>().enabled = false;
+        A_Menu.solverIndicator.GetComponent<DirectionalIndicator>().enabled = true;
+        A_Menu.artifactTarget.GetComponent<Follow>().enabled = false;
+        A_Menu.artifactTarget.SetActive(true);
+
+        //nel caso tutti gli step siano stati skippati perché si naviga verso lo stesso scaffale
+        A_Menu.artifactTarget.GetComponent<ArtifactIndicator>().SetTargetPosition(currentPath[step - 1]);
+        A_Menu.artifactTarget.transform.position = currentPath[step - 1].position;
+        Debug.Log("Step -1 = " + (step - 1));
+
+        A_Menu.stopNavigationButton.SetActive(false);
+        if (vsrltDeposit.GetForDeposit())
+            A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = targetReached[1];
+        else
+            A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = targetReached[0];
+
+        if (!vsrltDeposit.GetForDeposit())
+        {
+            ArtifactReached();
+        }
+
         else
         {
-            Debug.Log("Destinazione raggiunta! =)");
-            //A_Menu.artifactTarget.SetActive(false);
-            //A_Menu.solverIndicator.SetActive(false);
-            A_Menu.canvasDistance.GetComponent<Follow>().enabled = false;
-            A_Menu.solverIndicator.GetComponent<DirectionalIndicator>().enabled = true;
-            A_Menu.artifactTarget.GetComponent<Follow>().enabled = false;
-            A_Menu.artifactTarget.SetActive(true);
-
-            //nel caso tutti gli step siano stati skippati perché si naviga verso lo stesso scaffale
-            A_Menu.artifactTarget.GetComponent<ArtifactIndicator>().SetTargetPosition(currentPath[step-1]);
-            A_Menu.artifactTarget.transform.position = currentPath[step-1].position;
-            Debug.Log("Step -1 = " + (step - 1));
-            
-            A_Menu.stopNavigationButton.SetActive(false);
-            if (vsrltDeposit.GetForDeposit())
-                A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = targetReached[1];
-            else
-                A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = targetReached[0];
-
-            //salvataggio del percorso dell'ultimo reperto raggiunto per saltare eventuali step uguali per il prossimo reperto
-            if (recentPath.Count > 0)
-                recentPath.Clear();
-
-            foreach (var item in currentPath)
-                recentPath.Add(item);
-
-            //VirtualizedScrollRectListTester vsrltDeposit = A_Menu.depositList.GetComponentInChildren<VirtualizedScrollRectListTester>();
-            if (!vsrltDeposit.GetForDeposit())
-            {
-                ArtifactReached();
-                //A_Menu.withdrawButton.SetActive(true);
-            }
-                
-            else
-            {
-                ArtifactPositioning();
-                //A_Menu.depositInShelfButton.SetActive(true);
-            }
+            ArtifactPositioning();
         }
-
-        if (step <= currentPath.Count)
-            step++;
     }
 
     private void ArtifactReached()
@@ -1904,21 +1897,30 @@ public class AppManager : MonoBehaviour
         int tmp = step - 1;
         if (other.gameObject.CompareTag(indicatorTag) && tmp < currentPath.Count)
         {
-            A_Menu.artifactTarget.SetActive(false);
-            A_Menu.triggerEntered.Play();
-            //Debug.Log("Collider di " + other.gameObject.name + ". Step = " + step);
+            if (step >= currentPath.Count)
+                return;
 
-            if (elementsToExit.Count > 0)
+            // Se il target corrente è una stanza/corridoio,
+            // NON lo completo con la freccia.
+            if (currentPath[step].TryGetComponent(out StorageContainerView view))
             {
-                elementsToExit.RemoveAt(0);
-                Debug.Log("Rimosso elemento da cui uscire");
+                if (view.data.isRoom)
+                {
+                    return;
+                }
             }
 
-            NextStep();
+            // Altrimenti è un armadio/scaffale/cassetto:
+            // la freccia è corretta
+            if (exitStep >= exitPath.Count)
+            {
+                CompleteCurrentStep();
+            }
+
+            return;
         }
 
         // gestione per sapere dentro quale stanza sono
-        //StorageContainer storageContainer = other.gameObject.TryGetComponent<StorageContainerView>().data;
         other.gameObject.TryGetComponent<StorageContainerView>(out StorageContainerView storageContainerView);
 
         if (storageContainerView == null)
@@ -1927,62 +1929,104 @@ public class AppManager : MonoBehaviour
         if (storageContainerView.data.isRoom && !currentRoomsID.Contains(storageContainerView.data.id))
         {
             currentRoomsID.Add(storageContainerView.data.id);
-            Debug.Log("currentRoomsID = " + string.Join(", ", currentRoomsID));
 
-            // se sto navigando si aggiunge un elemento in più da cui "uscire"
+            Debug.Log(
+                "Entrato in: " + storageContainerView.name
+            );
+
+
             if (A_Menu.artifactTarget.activeSelf)
             {
-                elementsToExit.Insert(0, other.gameObject.transform);
-                NextStep();
+                // se è lo step corrente
+                if (step < currentPath.Count &&
+                    currentPath[step] == other.transform)
+                {
+                    CompleteCurrentStep();
+                }
+                else
+                {
+                    // sono entrato in un posto diverso
+                    Debug.Log("Trigger diverso, ricalcolo");
+
+                    RecalculateElementsToExit();
+
+                    step = CalculateCurrentStep();
+
+                    NextStep();
+                }
             }
         }
     }
 
+    private void CompleteCurrentStep()
+    {
+        //if (step < currentPath.Count && currentPath[step].TryGetComponent(out StorageContainerView view) && view.data.isRoom)
+        //{
+        //    return;
+        //}
+
+        A_Menu.artifactTarget.SetActive(false);
+        A_Menu.triggerEntered.Play();
+
+        //if (exitStep < exitPath.Count)
+        //{
+        //    Debug.Log("Exit completed: " + exitPath[exitStep].name);
+        //    exitStep++;
+        //}
+        //else
+        //{
+        //    if (step < currentPath.Count)
+        //    {
+        //        Debug.Log("Step completed: " + currentPath[step].name);
+        //        step++;
+        //    }
+        //}
+
+        if (step < currentPath.Count)
+        {
+            Debug.Log("Step completed: " + currentPath[step].name);
+            step++;
+        }
+
+        //A_Menu.artifactTarget.SetActive(false);
+
+        NextStep();
+    }
+
     private void OnTriggerExit(Collider other)
     {
-        other.gameObject.TryGetComponent<StorageContainerView>(out StorageContainerView storageContainerView);
-        //StorageContainer storageContainer = other.gameObject.GetComponent<StorageContainerView>().data;
-
-        if (storageContainerView == null)
+        if (!other.TryGetComponent(out StorageContainerView storageContainerView))
             return;
 
-        if (storageContainerView.data.isRoom && currentRoomsID.Contains(storageContainerView.data.id))
+        if (!storageContainerView.data.isRoom)
+            return;
+
+        if (!currentRoomsID.Remove(storageContainerView.data.id))
+            return;
+
+        Debug.Log("Uscito da: " + storageContainerView.name);
+
+        TestHierarchy();
+
+        if (A_Menu.artifactTarget.activeSelf)
         {
-            currentRoomsID.Remove(storageContainerView.data.id);
-            Debug.Log("currentRoomsID = " + string.Join(", ", currentRoomsID));
+            A_Menu.artifactTarget.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+            A_Menu.artifactTarget.GetComponent<Follow>().enabled = true;
 
-            // se esco da un trigger del percorso torno indietro negli step
-            //if(!A_Menu.artifactTarget.activeSelf)
-            //{ return; }
-
-            int index = currentPath.IndexOf(other.gameObject.transform);
-
-            if (index != -1)
+            if (exitStep < exitPath.Count && exitPath[exitStep] == other.transform)
             {
-                step = index;
-                Debug.Log("Step - recentPath.count: " + step + " - " + recentPath.Count);
-                if (step < recentPath.Count)
-                    recentPath.RemoveRange(index, recentPath.Count - index);
+                Debug.Log("Exit completed: " + other.name);
+                exitStep++;
 
-                if (A_Menu.artifactTarget.activeSelf)
-                {
-                    A_Menu.artifactTarget.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
-                    A_Menu.artifactTarget.GetComponent<Follow>().enabled = true;
-                    NextStep();
-                }
+                A_Menu.artifactTarget.SetActive(false);
+                A_Menu.triggerEntered.Play();
             }
-            else
-            {
-                if (A_Menu.artifactTarget.activeSelf)
-                {
-                    A_Menu.artifactTarget.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
-                    A_Menu.artifactTarget.GetComponent<Follow>().enabled = true;
 
-                    elementsToExit.Insert(0, other.gameObject.transform);
+            RecalculateElementsToExit();
 
-                    NextStep();
-                }
-            }
+            step = CalculateCurrentStep();
+
+            NextStep();
         }
     }
 
@@ -2069,7 +2113,6 @@ public class AppManager : MonoBehaviour
         step = 0;
         A_Menu.artifactTarget.GetComponent<Follow>().enabled = true;
         A_Menu.artifactTarget.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
-        recentPath.Clear();
         NextStep();
     }
 
