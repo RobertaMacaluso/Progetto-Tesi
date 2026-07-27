@@ -88,9 +88,14 @@ public class AppManager : MonoBehaviour
     private int step = 0;
     private readonly string indicatorTag = "Target";
     private List<int> currentRoomsID = new List<int>();
-    private List<Transform> currentRoomHierarchy = new List<Transform>();
+    //private List<Transform> currentRoomHierarchy = new List<Transform>();
     private List<Transform> exitPath = new();
     private int exitStep = 0;
+    private readonly Dictionary<int, int> activeTriggerCounts = new Dictionary<int, int>();
+    private readonly Dictionary<int, Transform> activeTriggerTransforms = new Dictionary<int, Transform>();
+    private List<Transform> currentLogicalHierarchy = new List<Transform>();
+    private Coroutine hierarchyRefreshRoutine;
+    private bool hierarchyDirty;
     //private readonly List<Transform> depositPath = new();
     private VirtualizedScrollRectListTester vsrltDeposit;
     private TextMeshProUGUI distanceText;
@@ -1538,25 +1543,125 @@ public class AppManager : MonoBehaviour
         
     }
 
+    private static List<Transform> BuildHierarchyPath(Transform leaf)
+    {
+        List<Transform> hierarchy = new List<Transform>();
+
+        while (leaf != null)
+        {
+            if (leaf.TryGetComponent<StorageContainerView>(out _))
+                hierarchy.Insert(0, leaf);
+
+            leaf = leaf.parent;
+        }
+
+        return hierarchy;
+    }
+
+    private static int GetCommonPrefixCount(List<Transform> a, List<Transform> b)
+    {
+        int max = Mathf.Min(a.Count, b.Count);
+
+        for (int i = 0; i < max; i++)
+        {
+            if (a[i] != b[i])
+                return i;
+        }
+
+        return max;
+    }
+
+    private void SyncCurrentRoomsIDsFromHierarchy()
+    {
+        currentRoomsID.Clear();
+
+        foreach (var t in currentLogicalHierarchy)
+        {
+            if (t != null && t.TryGetComponent<StorageContainerView>(out var view))
+                currentRoomsID.Add(view.data.id);
+        }
+    }
+
+    private List<Transform> GetDeepestActiveHierarchy()
+    {
+        List<Transform> bestHierarchy = new List<Transform>();
+        int bestDepth = -1;
+        int bestCommonPrefix = -1;
+
+        foreach (var kvp in activeTriggerCounts)
+        {
+            if (kvp.Value <= 0)
+                continue;
+
+            if (!activeTriggerTransforms.TryGetValue(kvp.Key, out var tr) || tr == null)
+                continue;
+
+            List<Transform> candidate = BuildHierarchyPath(tr);
+
+            int depth = candidate.Count;
+            int commonPrefix = GetCommonPrefixCount(currentLogicalHierarchy, candidate);
+
+            if (depth > bestDepth || (depth == bestDepth && commonPrefix > bestCommonPrefix))
+            {
+                bestHierarchy = candidate;
+                bestDepth = depth;
+                bestCommonPrefix = commonPrefix;
+            }
+        }
+
+        return bestHierarchy;
+    }
+
+    private void RequestHierarchyRefresh()
+    {
+        hierarchyDirty = true;
+
+        if (hierarchyRefreshRoutine == null)
+            hierarchyRefreshRoutine = StartCoroutine(RefreshHierarchyAtEndOfFrame());
+    }
+
+    private IEnumerator RefreshHierarchyAtEndOfFrame()
+    {
+        yield return new WaitForEndOfFrame();
+        hierarchyRefreshRoutine = null;
+
+        if (!hierarchyDirty)
+            yield break;
+
+        hierarchyDirty = false;
+
+        if (!A_Menu.artifactTarget.activeSelf)
+            yield break;
+
+        RecalculateElementsToExit();
+        step = CalculateCurrentStep();
+        NextStep();
+    }
+
     //inizia la navigazione per portare l'utente al reperto
     public void StartNavigation()
     {
         Debug.Log("Start navigation. Path count = " + currentPath.Count);
+
         A_Menu.startNavigationButton.SetActive(false);
         A_Menu.stopNavigationButton.SetActive(true);
         A_Menu.solverIndicator.SetActive(true);
         A_Menu.solverIndicator.GetComponent<DirectionalIndicator>().enabled = true;
         A_Menu.solverIndicator.GetComponent<DirectionalIndicator>().DirectionalTarget = A_Menu.artifactTarget.transform;
-        //A_Menu.canvasDistance.SetActive(true);
-        //A_Menu.canvasDistance.transform.SetParent(A_Menu.solverIndicator.transform);
         A_Menu.artifactTarget.GetComponent<Follow>().enabled = true;
         A_Menu.artifactTarget.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
 
+        if (hierarchyRefreshRoutine != null)
+        {
+            StopCoroutine(hierarchyRefreshRoutine);
+            hierarchyRefreshRoutine = null;
+        }
+
+        hierarchyDirty = false;
         exitStep = 0;
+
         step = CalculateCurrentStep();
-
         RecalculateElementsToExit();
-
         NextStep();
     }
 
@@ -1590,50 +1695,16 @@ public class AppManager : MonoBehaviour
 
     private List<Transform> GetCurrentHierarchy()
     {
-        List<Transform> bestHierarchy = new List<Transform>();
+        if (currentLogicalHierarchy.Count > 0)
+            return new List<Transform>(currentLogicalHierarchy);
 
-        if (currentRoomsID.Count == 0)
-            return bestHierarchy;
+        // Fallback di sicurezza: se per qualche motivo la gerarchia logica è vuota
+        // ma ci sono trigger attivi, ricostruisco dalla parte più profonda.
+        List<Transform> deepest = GetDeepestActiveHierarchy();
+        if (deepest.Count > 0)
+            return deepest;
 
-
-        foreach (int id in currentRoomsID)
-        {
-            if (!spawnedShelves.TryGetValue(id, out GameObject currentObject))
-            {
-                Debug.LogWarning("Impossibile trovare StorageContainer con ID: " + id);
-                continue;
-            }
-
-
-            List<Transform> hierarchy = new List<Transform>();
-
-            Transform current = currentObject.transform;
-
-
-            while (current != null)
-            {
-                if (current.TryGetComponent<StorageContainerView>(out var storage))
-                {
-                    hierarchy.Insert(0, current);
-                }
-
-                current = current.parent;
-            }
-
-
-            /*
-             * Tengo la gerarchia più profonda.
-             * In pratica quella relativa al container più interno
-             * in cui l'utente si trova.
-             */
-            if (hierarchy.Count > bestHierarchy.Count)
-            {
-                bestHierarchy = hierarchy;
-            }
-        }
-
-
-        return bestHierarchy;
+        return new List<Transform>();
     }
 
     private void RecalculateElementsToExit()
@@ -1643,69 +1714,44 @@ public class AppManager : MonoBehaviour
 
         List<Transform> currentHierarchy = GetCurrentHierarchy();
 
-        if (currentHierarchy.Count == 0)
+        if (currentHierarchy.Count == 0 || currentPath.Count == 0)
             return;
 
-        /*
-         * Trovo fino a dove il percorso attuale dell'utente
-         * coincide con il percorso del reperto.
-         */
         int commonIndex = -1;
-
         int max = Mathf.Min(currentHierarchy.Count, currentPath.Count);
 
         for (int i = 0; i < max; i++)
         {
             if (currentHierarchy[i] == currentPath[i])
-            {
                 commonIndex = i;
-            }
             else
-            {
                 break;
-            }
         }
 
-        /*
-         * Tutto quello che è dopo il punto comune
-         * nella gerarchia dell'utente deve essere abbandonato.
-         */
+        // Tutto ciò che sta dopo il punto comune va abbandonato, dal più interno verso l'esterno.
         for (int i = currentHierarchy.Count - 1; i > commonIndex; i--)
         {
-            exitPath.Add(currentHierarchy[i]);
+            if (currentHierarchy[i] != null)
+                exitPath.Add(currentHierarchy[i]);
         }
 
-
-        Debug.Log(
-            "ExitPath: " +
-            string.Join(", ", exitPath.Select(x => x.name))
-        );
-
-        if (exitStep > exitPath.Count)
-            exitStep = exitPath.Count;
+        Debug.Log("ExitPath: " + string.Join(", ", exitPath.Select(x => x.name)));
     }
 
     private int CalculateCurrentStep()
     {
-        for (int i = 0; i < currentPath.Count; i++)
+        List<Transform> currentHierarchy = GetCurrentHierarchy();
+
+        int max = Mathf.Min(currentHierarchy.Count, currentPath.Count);
+        int i = 0;
+
+        for (; i < max; i++)
         {
-            StorageContainerView view;
-
-            if (!currentPath[i].TryGetComponent(out view))
-                return i;
-
-            // Gli elementi con trigger (stanze, corridoi...)
-            if (view.data.isRoom)
-            {
-                if (currentRoomsID.Contains(view.data.id))
-                    continue;
-            }
-
-            // Il primo elemento non ancora raggiunto
-            return i;
+            if (currentHierarchy[i] != currentPath[i])
+                break;
         }
 
-        return currentPath.Count;
+        return i;
     }
 
     private void SetNavigationTarget(Transform target, bool isExit)
@@ -1751,19 +1797,22 @@ public class AppManager : MonoBehaviour
 
     private void DestinationReached()
     {
-        Debug.Log("Destinazione raggiunta! =)");
+        Debug.Log("Destinazione raggiunta! =) ");
 
         A_Menu.canvasDistance.GetComponent<Follow>().enabled = false;
         A_Menu.solverIndicator.GetComponent<DirectionalIndicator>().enabled = true;
         A_Menu.artifactTarget.GetComponent<Follow>().enabled = false;
         A_Menu.artifactTarget.SetActive(true);
 
-        //nel caso tutti gli step siano stati skippati perché si naviga verso lo stesso scaffale
-        A_Menu.artifactTarget.GetComponent<ArtifactIndicator>().SetTargetPosition(currentPath[step - 1]);
-        A_Menu.artifactTarget.transform.position = currentPath[step - 1].position;
-        Debug.Log("Step -1 = " + (step - 1));
+        int lastIndex = Mathf.Clamp(step - 1, 0, currentPath.Count - 1);
+
+        A_Menu.artifactTarget.GetComponent<ArtifactIndicator>().SetTargetPosition(currentPath[lastIndex]);
+        A_Menu.artifactTarget.transform.position = currentPath[lastIndex].position;
+
+        Debug.Log("Last step index = " + lastIndex);
 
         A_Menu.stopNavigationButton.SetActive(false);
+
         if (vsrltDeposit.GetForDeposit())
             A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = targetReached[1];
         else
@@ -1773,7 +1822,6 @@ public class AppManager : MonoBehaviour
         {
             ArtifactReached();
         }
-
         else
         {
             ArtifactPositioning();
@@ -1895,23 +1943,18 @@ public class AppManager : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         int tmp = step - 1;
+
         if (other.gameObject.CompareTag(indicatorTag) && tmp < currentPath.Count)
         {
             if (step >= currentPath.Count)
                 return;
 
-            // Se il target corrente è una stanza/corridoio,
-            // NON lo completo con la freccia.
             if (currentPath[step].TryGetComponent(out StorageContainerView view))
             {
                 if (view.data.isRoom)
-                {
                     return;
-                }
             }
 
-            // Altrimenti è un armadio/scaffale/cassetto:
-            // la freccia è corretta
             if (exitStep >= exitPath.Count)
             {
                 CompleteCurrentStep();
@@ -1920,67 +1963,78 @@ public class AppManager : MonoBehaviour
             return;
         }
 
-        // gestione per sapere dentro quale stanza sono
-        other.gameObject.TryGetComponent<StorageContainerView>(out StorageContainerView storageContainerView);
-
+        StorageContainerView storageContainerView = other.GetComponentInParent<StorageContainerView>();
         if (storageContainerView == null)
             return;
 
-        if (storageContainerView.data.isRoom && !currentRoomsID.Contains(storageContainerView.data.id))
+        if (!storageContainerView.data.isRoom)
+            return;
+
+        int id = storageContainerView.data.id;
+
+        if (activeTriggerCounts.TryGetValue(id, out int count))
+            activeTriggerCounts[id] = count + 1;
+        else
+            activeTriggerCounts[id] = 1;
+
+        activeTriggerTransforms[id] = storageContainerView.transform;
+
+        List<Transform> candidateHierarchy = BuildHierarchyPath(storageContainerView.transform);
+
+        // Aggiornamento logico robusto:
+        // - se entro più in profondità, aggiorno;
+        // - se entro in un antenato, ignoro;
+        // - se cambio ramo, considero la nuova gerarchia come quella corrente.
+        if (currentLogicalHierarchy.Count == 0)
         {
-            currentRoomsID.Add(storageContainerView.data.id);
+            currentLogicalHierarchy = candidateHierarchy;
+        }
+        else
+        {
+            int commonPrefix = GetCommonPrefixCount(currentLogicalHierarchy, candidateHierarchy);
 
-            Debug.Log(
-                "Entrato in: " + storageContainerView.name
-            );
-
-
-            if (A_Menu.artifactTarget.activeSelf)
+            if (commonPrefix == currentLogicalHierarchy.Count && candidateHierarchy.Count >= currentLogicalHierarchy.Count)
             {
-                // se è lo step corrente
-                if (step < currentPath.Count &&
-                    currentPath[step] == other.transform)
-                {
-                    CompleteCurrentStep();
-                }
-                else
-                {
-                    // sono entrato in un posto diverso
-                    Debug.Log("Trigger diverso, ricalcolo");
-
-                    RecalculateElementsToExit();
-
-                    step = CalculateCurrentStep();
-
-                    NextStep();
-                }
+                // Sto andando più in profondità nello stesso ramo.
+                currentLogicalHierarchy = candidateHierarchy;
             }
+            else if (commonPrefix == candidateHierarchy.Count && currentLogicalHierarchy.Count >= candidateHierarchy.Count)
+            {
+                // Sono entrato in un antenato, ma sono già più dentro: non fare nulla.
+            }
+            else if (commonPrefix > 0)
+            {
+                // Cambio ramo coerente con la nuova entrata.
+                currentLogicalHierarchy = candidateHierarchy;
+            }
+            else
+            {
+                // Caso di ingresso "pulito" in un trigger non correlato al contesto attuale.
+                currentLogicalHierarchy = candidateHierarchy;
+            }
+        }
+
+        SyncCurrentRoomsIDsFromHierarchy();
+
+        Debug.Log("Entrato in: " + storageContainerView.name);
+
+        if (A_Menu.artifactTarget.activeSelf)
+        {
+            // Se ho appena raggiunto esattamente lo step corrente, completo subito.
+            if (step < currentPath.Count && currentPath[step] == storageContainerView.transform)
+            {
+                CompleteCurrentStep();
+                return;
+            }
+
+            RequestHierarchyRefresh();
         }
     }
 
     private void CompleteCurrentStep()
     {
-        //if (step < currentPath.Count && currentPath[step].TryGetComponent(out StorageContainerView view) && view.data.isRoom)
-        //{
-        //    return;
-        //}
-
         A_Menu.artifactTarget.SetActive(false);
         A_Menu.triggerEntered.Play();
-
-        //if (exitStep < exitPath.Count)
-        //{
-        //    Debug.Log("Exit completed: " + exitPath[exitStep].name);
-        //    exitStep++;
-        //}
-        //else
-        //{
-        //    if (step < currentPath.Count)
-        //    {
-        //        Debug.Log("Step completed: " + currentPath[step].name);
-        //        step++;
-        //    }
-        //}
 
         if (step < currentPath.Count)
         {
@@ -1988,62 +2042,171 @@ public class AppManager : MonoBehaviour
             step++;
         }
 
-        //A_Menu.artifactTarget.SetActive(false);
-
         NextStep();
     }
 
     private void OnTriggerExit(Collider other)
     {
-        if (!other.TryGetComponent(out StorageContainerView storageContainerView))
+        StorageContainerView storageContainerView = other.GetComponentInParent<StorageContainerView>();
+        if (storageContainerView == null)
             return;
 
         if (!storageContainerView.data.isRoom)
             return;
 
-        if (!currentRoomsID.Remove(storageContainerView.data.id))
-            return;
+        int id = storageContainerView.data.id;
+
+        if (activeTriggerCounts.TryGetValue(id, out int count))
+        {
+            count--;
+
+            if (count <= 0)
+            {
+                activeTriggerCounts.Remove(id);
+                activeTriggerTransforms.Remove(id);
+            }
+            else
+            {
+                activeTriggerCounts[id] = count;
+            }
+        }
 
         Debug.Log("Uscito da: " + storageContainerView.name);
 
-        TestHierarchy();
+        // Se sto uscendo proprio dall'ultimo livello della gerarchia corrente, lo tolgo.
+        if (currentLogicalHierarchy.Count > 0 && currentLogicalHierarchy[currentLogicalHierarchy.Count - 1] == storageContainerView.transform)
+        {
+            currentLogicalHierarchy.RemoveAt(currentLogicalHierarchy.Count - 1);
+        }
+
+        // Se c'erano altri trigger attivi, riallineo al più profondo ancora valido.
+        if (activeTriggerCounts.Count > 0)
+        {
+            List<Transform> deepestActive = GetDeepestActiveHierarchy();
+            if (deepestActive.Count > 0)
+                currentLogicalHierarchy = deepestActive;
+        }
+
+        SyncCurrentRoomsIDsFromHierarchy();
 
         if (A_Menu.artifactTarget.activeSelf)
         {
-            A_Menu.artifactTarget.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
-            A_Menu.artifactTarget.GetComponent<Follow>().enabled = true;
-
-            if (exitStep < exitPath.Count && exitPath[exitStep] == other.transform)
+            if (exitStep < exitPath.Count && exitPath[exitStep] == storageContainerView.transform)
             {
-                Debug.Log("Exit completed: " + other.name);
-                exitStep++;
-
-                A_Menu.artifactTarget.SetActive(false);
                 A_Menu.triggerEntered.Play();
             }
 
-            RecalculateElementsToExit();
+            A_Menu.artifactTarget.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+            A_Menu.artifactTarget.GetComponent<Follow>().enabled = true;
 
-            step = CalculateCurrentStep();
-
-            NextStep();
+            RequestHierarchyRefresh();
         }
     }
 
     //chiamata quando si interrompe la navigazione verso un reperto o uno scaffale, ma anche dalla funzione del back button e dalla X del pannello reperti
+    //public void StopNavigation()
+    //{
+    //    A_Menu.artifactTarget.SetActive(false);
+    //    A_Menu.artifactProp.SetActive(false);
+    //    A_Menu.artifactIndicator.SetActive(false);
+    //    A_Menu.solverIndicator.SetActive(false);
+    //    //A_Menu.canvasDistance.SetActive(false);
+    //    A_Menu.artifactIndicator.transform.SetParent(null);
+    //    A_Menu.stopNavigationButton.SetActive(false);
+    //    A_Menu.navigationText.SetActive(false);
+    //    A_Menu.depositButton.SetActive(false);
+    //    A_Menu.depositInLastShelfButton.SetActive(false);
+    //    A_Menu.depositInShelfButton.SetActive(false);
+    //    foreach (var obj in A_Menu.artifactDepositedUI)
+    //    {
+    //        obj.SetActive(false);
+    //    }
+
+    //    if (vsrltDeposit.GetForDeposit())
+    //    {
+    //        A_Menu.artifactText.SetActive(true);
+    //        A_Menu.artifactText.GetComponent<TextMeshProUGUI>().text = artifactShelfNo;
+    //    }
+
+
+    //    if (A_Menu.artifactVirualizedList.gameObject.activeSelf)
+    //    {
+    //        //Debug.Log("Deposit list - navigation if");
+    //        A_Menu.artifactTitle.GetComponent<TextMeshProUGUI>().text = artifactGeneralText;
+    //    }
+    //    else
+    //    {
+    //        if (artifactSelected != null)
+    //        {
+    //            Debug.Log("Deposit list - navigation else");
+    //            int shelfID = artifactSelected.GetComponent<ArtifactView>().data.GetShelfID();
+
+    //            if (shelfID != -1)
+    //            {
+    //                A_Menu.startNavigationButton.SetActive(true);
+    //                Debug.Log("Deposit list - navigation button on");
+    //            }
+    //            else
+    //            {
+    //                A_Menu.depositButton.SetActive(true);
+    //                Debug.Log("Deposit list - deposit button on");
+
+    //                //int lastShelvingUnit = PlayerPrefs.GetInt(artifactPP + artifactSelected.GetComponent<ArtifactView>().data.id.ToString() + "_Last");
+    //                int lastShelvingUnit = artifactSelected.GetComponent<ArtifactView>().data.lastShelvingUnit;
+    //                if (lastShelvingUnit != -1)
+    //                {
+    //                    A_Menu.depositButton.GetComponentInChildren<TextMeshProUGUI>().text = textDeposit;
+    //                    A_Menu.artifactText.GetComponent<TextMeshProUGUI>().text = artifactShelfNo;
+    //                    A_Menu.artifactText.GetComponent<TextMeshProUGUI>().text += ".\n" + artifactShelfLast + " (" + spawnedShelves[lastShelvingUnit].name.ToString() + ")?";
+    //                    A_Menu.depositInLastShelfButton.SetActive(true);
+    //                }
+    //                else
+    //                {
+    //                    A_Menu.artifactText.GetComponent<TextMeshProUGUI>().text = initialDepositText;
+    //                    A_Menu.depositButton.GetComponentInChildren<TextMeshProUGUI>().text = initialDepositButtonText;
+    //                }
+    //            }
+    //        }
+    //    }
+
+    //    step = 0;
+
+
+    //    A_Menu.withdrawButton.SetActive(false);
+    //    //A_Menu.depositButton.SetActive(false);
+    //    A_Menu.depositList.SetActive(false);
+    //    //VirtualizedScrollRectListTester vsrltDeposit = A_Menu.depositList.GetComponentInChildren<VirtualizedScrollRectListTester>();
+    //    vsrltDeposit.SetForDeposit(false);
+
+    //    //Debug.Log("Deposit list - Stop Navigation");
+    //}
+
     public void StopNavigation()
     {
+        if (hierarchyRefreshRoutine != null)
+        {
+            StopCoroutine(hierarchyRefreshRoutine);
+            hierarchyRefreshRoutine = null;
+        }
+
+        hierarchyDirty = false;
+
+        // Stato di navigazione: sì, lo pulisco
+        exitPath.Clear();
+        exitStep = 0;
+        step = 0;
+
         A_Menu.artifactTarget.SetActive(false);
         A_Menu.artifactProp.SetActive(false);
         A_Menu.artifactIndicator.SetActive(false);
         A_Menu.solverIndicator.SetActive(false);
-        //A_Menu.canvasDistance.SetActive(false);
         A_Menu.artifactIndicator.transform.SetParent(null);
         A_Menu.stopNavigationButton.SetActive(false);
         A_Menu.navigationText.SetActive(false);
         A_Menu.depositButton.SetActive(false);
         A_Menu.depositInLastShelfButton.SetActive(false);
         A_Menu.depositInShelfButton.SetActive(false);
+
         foreach (var obj in A_Menu.artifactDepositedUI)
         {
             obj.SetActive(false);
@@ -2054,11 +2217,9 @@ public class AppManager : MonoBehaviour
             A_Menu.artifactText.SetActive(true);
             A_Menu.artifactText.GetComponent<TextMeshProUGUI>().text = artifactShelfNo;
         }
-            
 
         if (A_Menu.artifactVirualizedList.gameObject.activeSelf)
         {
-            //Debug.Log("Deposit list - navigation if");
             A_Menu.artifactTitle.GetComponent<TextMeshProUGUI>().text = artifactGeneralText;
         }
         else
@@ -2078,7 +2239,6 @@ public class AppManager : MonoBehaviour
                     A_Menu.depositButton.SetActive(true);
                     Debug.Log("Deposit list - deposit button on");
 
-                    //int lastShelvingUnit = PlayerPrefs.GetInt(artifactPP + artifactSelected.GetComponent<ArtifactView>().data.id.ToString() + "_Last");
                     int lastShelvingUnit = artifactSelected.GetComponent<ArtifactView>().data.lastShelvingUnit;
                     if (lastShelvingUnit != -1)
                     {
@@ -2096,23 +2256,36 @@ public class AppManager : MonoBehaviour
             }
         }
 
-        step = 0;
-
-
         A_Menu.withdrawButton.SetActive(false);
-        //A_Menu.depositButton.SetActive(false);
         A_Menu.depositList.SetActive(false);
-        //VirtualizedScrollRectListTester vsrltDeposit = A_Menu.depositList.GetComponentInChildren<VirtualizedScrollRectListTester>();
         vsrltDeposit.SetForDeposit(false);
-
-        //Debug.Log("Deposit list - Stop Navigation");
     }
+
+    //public void ResetPath()
+    //{
+    //    step = 0;
+    //    A_Menu.artifactTarget.GetComponent<Follow>().enabled = true;
+    //    A_Menu.artifactTarget.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+    //    NextStep();
+    //}
 
     public void ResetPath()
     {
         step = 0;
+        exitStep = 0;
+        exitPath.Clear();
+
+        if (hierarchyRefreshRoutine != null)
+        {
+            StopCoroutine(hierarchyRefreshRoutine);
+            hierarchyRefreshRoutine = null;
+        }
+
+        hierarchyDirty = false;
+
         A_Menu.artifactTarget.GetComponent<Follow>().enabled = true;
         A_Menu.artifactTarget.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+
         NextStep();
     }
 
