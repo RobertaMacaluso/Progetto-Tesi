@@ -67,6 +67,7 @@ public class AppManager : MonoBehaviour
     private List<GameObject> allArtifacts = new();
     private List<GameObject> artifactsOnList = new();
     private GameObject artifactSelected;
+    private NavigationTask currentTask = new NavigationTask();
     private Vector3 artifactIndicatorScale;
     private Dictionary<int, GameObject> spawnedArtifacts = new Dictionary<int, GameObject>();
     private Dictionary<int, GameObject> spawnedShelves = new Dictionary<int, GameObject>();
@@ -1464,6 +1465,25 @@ public class AppManager : MonoBehaviour
         A_Menu.artifactText.SetActive(true);
         A_Menu.artifactBackButton.SetActive(true);
 
+        // TASK
+        currentTask.Clear();
+
+        Artifact artifact =
+            artifactsOnList[index].GetComponent<ArtifactView>().data;
+
+        currentTask.Add(CreateTaskItem(artifact));
+        //Artifact artifact = artifactsOnList[index].GetComponent<ArtifactView>().data;
+
+        //if (!currentTask.ContainsArtifact(artifact.id))
+        //{
+        //    currentTask.Add(CreateTaskItem(artifact));
+        //}
+        //else
+        //{
+        //    Debug.Log("Artifact già presente nel task");
+        //}
+        //
+
         if (shelfID != -1)
         {
             A_Menu.artifactText.GetComponent<TextMeshProUGUI>().text = artifactShelfYes + spawnedShelves[shelfID].name.ToString();
@@ -1841,7 +1861,8 @@ public class AppManager : MonoBehaviour
         A_Menu.solverIndicator.GetComponent<DirectionalIndicator>().enabled = true;
 
         // gestione indicatore reperto
-        Artifact artifact = artifactSelected.GetComponent<ArtifactView>().data;
+        //Artifact artifact = artifactSelected.GetComponent<ArtifactView>().data;
+        Artifact artifact = currentTask.Current.Artifact;
         GameObject shelfDeposit = currentPath[currentPath.Count-1].gameObject;
 
         Debug.Log("ArtifactSelected = " + artifact.name);
@@ -1931,7 +1952,8 @@ public class AppManager : MonoBehaviour
         A_Menu.selectShelfButton.SetActive(false);
 
         // gestione prop
-        Artifact artifact = artifactSelected.GetComponent<ArtifactView>().data;
+        //Artifact artifact = artifactSelected.GetComponent<ArtifactView>().data;
+        Artifact artifact = currentTask.Current.Artifact;
         GameObject shelfDeposit = vsrltDeposit.GetShelfDeposit();
 
         A_Menu.artifactProp.SetActive(true);
@@ -2293,6 +2315,44 @@ public class AppManager : MonoBehaviour
         NextStep();
     }
 
+    private TaskItem CreateTaskItem(Artifact artifact)
+    {
+        StorageContainerView shelfView = null;
+
+        if (artifact.GetShelfID() != -1)
+            shelfView = spawnedShelves[artifact.GetShelfID()].GetComponent<StorageContainerView>();
+
+        return new TaskItem
+        {
+            Artifact = artifact,
+            ShelfView = shelfView,
+            Shelf = shelfView != null ? shelfView.data : null,
+            Operation = artifact.GetShelfID() == -1
+                ? TaskOperation.Deposit
+                : TaskOperation.Pick
+        };
+    }
+
+    private void GoToNextTask()
+    {
+        currentTask.Next();
+
+        if (!currentTask.HasCurrent)
+        {
+            Debug.Log("Task completato.");
+
+            currentTask.Clear();
+
+            return;
+        }
+
+        currentPath.Clear();
+
+        CalculatePath(currentTask.Current.ShelfView.transform);
+
+        StartNavigation();
+    }
+
     public void ManageCubeAndSphere(bool toParent)
     {
         if (!positioningCubeRoom.activeSelf)
@@ -2317,7 +2377,8 @@ public class AppManager : MonoBehaviour
         //artifactSelected.GetComponent<ArtifactView>().data.SetShelfID(-1);
         A_Menu.artifactIndicator.SetActive(false);
         A_Menu.artifactIndicator.transform.SetParent(null);
-        Artifact data = artifactSelected.GetComponent<ArtifactView>().data;
+        //Artifact data = artifactSelected.GetComponent<ArtifactView>().data;
+        Artifact data = currentTask.Current.Artifact;
         data.shelvingUnit = -1;
         data.containerLocalPose = "";
 
