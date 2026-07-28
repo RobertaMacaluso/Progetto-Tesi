@@ -29,15 +29,19 @@ namespace MixedReality.Toolkit.Examples.Demos
         [SerializeField] private AppManager appManager;
         [SerializeField] private GameObject warehouse;
         [SerializeField] private GameObject[] buttonPrefabs;
+        //[SerializeField] private GameObject selectShelfButton;
 
         private VirtualizedScrollRectList list;
         private float destScroll;
         private bool animate;
         private bool forDeposit = false;
         private List<GameObject> depositList = new();
-        private readonly string depositText = "Navigare la gerarchia fino allo scaffale desiderato";
+        private readonly string depositTextInitial = "Navigare la gerarchia fino al livello desiderato e confermare";
+        private readonly string depositTextWithChild = "Continuare a navigare la gerarchia o confermare l'elemento: ";
+        private readonly string depositTextNoChild = "Non ci sono ulteriori elementi, confermare: ";
         private List<GameObject> shelvesList = new();
         private GameObject shelfForDeposit;
+        private GameObject currentShelfNavigated;
         private List<GameObject> artifactsList = new();
 
         private readonly string[] words = { "one", "two", "three", "zebra", "keyboard", "rabbit", "graphite", "ruby", };
@@ -48,6 +52,8 @@ namespace MixedReality.Toolkit.Examples.Demos
         /// </summary> 
         private void Start()
         {
+            appManager.A_Menu.selectShelfButton.SetActive(false);
+
             shelvesList = appManager.GetShelvesList();
             artifactsList = appManager.GetArtifactsList();
 
@@ -202,22 +208,33 @@ namespace MixedReality.Toolkit.Examples.Demos
             else
             {
                 if (depositList[i].transform.childCount > 0)
+                {
+                    //appManager.A_Menu.depositList.SetActive(true);
                     ListForDeposit(depositList[i]);
+                }
                 else
                 {
-                    Debug.Log("Scelto scaffale per deposito");
+                    //Debug.Log("Scelto scaffale per deposito");
 
-                    appManager.StartDepositNavigation(depositList[i]);
-                    shelfForDeposit = depositList[i];
+                    //appManager.StartDepositNavigation(depositList[i]);
+                    //shelfForDeposit = depositList[i];
+                    ListForDeposit(depositList[i]);
 
-                    /*GameObject artifact = appManager.GetArtifactSelected();
-                    artifact.GetComponent<Artifact>().SetShelfID(depositList[i].name);
-                    PlayerPrefs.SetString(artifact.name, depositList[i].name);
-
-                    appManager.DepositSucceded();*/
+                    // mettere testo che non ha altri figli?
+                    appManager.A_Menu.artifactText.GetComponent<TextMeshProUGUI>().text = depositTextNoChild + currentShelfNavigated.name.ToString() + "?";
+                    appManager.A_Menu.depositList.SetActive(false);
                 }
             }
             
+        }
+
+        public void SetShelfForDeposit()
+        {
+            Debug.Log("Scelto scaffale per deposito");
+
+            appManager.StartDepositNavigation(currentShelfNavigated);
+            shelfForDeposit = currentShelfNavigated;
+            appManager.A_Menu.selectShelfButton.SetActive(false);
         }
 
         public async void DepositInShelf()
@@ -293,7 +310,23 @@ namespace MixedReality.Toolkit.Examples.Demos
             //Debug.Log("List for deposit");
 
             if (parent == warehouse)
-                appManager.A_Menu.artifactText.GetComponent<TextMeshProUGUI>().text = depositText;
+            {
+                currentShelfNavigated = null;
+
+                appManager.A_Menu.artifactText.GetComponent<TextMeshProUGUI>().text = depositTextInitial;
+
+                // spegnere bottone di conferma shelf?
+                appManager.A_Menu.selectShelfButton.SetActive(false);
+            }
+            else
+            {
+                currentShelfNavigated = parent;
+
+                appManager.A_Menu.artifactText.GetComponent<TextMeshProUGUI>().text = depositTextWithChild + currentShelfNavigated.name.ToString();
+
+                // accendere bottone di conferma shelf?
+                appManager.A_Menu.selectShelfButton.SetActive(true);
+            }
 
             for (int i = 0; i < parent.transform.childCount; i++)
                 depositList.Add(parent.transform.GetChild(i).gameObject);
@@ -320,20 +353,28 @@ namespace MixedReality.Toolkit.Examples.Demos
 
         public void Back()
         {
-            GameObject currentParent = depositList[0].transform.parent.gameObject;
+            //GameObject currentParent = depositList[0].transform.parent.gameObject;
+            GameObject currentParent = currentShelfNavigated;
 
-            if (currentParent != null)
+            if (currentParent == null)
+                currentParent = depositList[0].transform.parent.gameObject;
+
+            //if (currentParent != null)
+            //{
+            if(currentParent.name != warehouse.name)
             {
-                if(currentParent.name != warehouse.name)
-                {
-                    ListForDeposit(currentParent.transform.parent.gameObject);
-                }
-                else
-                {
-                    forDeposit = false;
-                    appManager.BackButtonArtifact();
-                }
+                if (forDeposit && !appManager.A_Menu.depositList.activeSelf)
+                    appManager.A_Menu.depositList.SetActive(true);
+
+                ListForDeposit(currentParent.transform.parent.gameObject);
             }
+            else
+            {
+                Debug.Log($"Chiusura lista. currentParent = {currentParent}");
+                forDeposit = false;
+                appManager.BackButtonArtifact();
+            }
+            //}
         }
 
         public void HandlePrefab(GameObject text, bool value)

@@ -7,15 +7,15 @@ Material:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: WLT-Red
+  m_Name: WLT-Yellow
   m_Shader: {fileID: 4800000, guid: c331f6c43a2ef0945864cb668f2653c9, type: 3}
   m_Parent: {fileID: 0}
   m_ModifiedSerializedProperties: 0
   m_ValidKeywords:
+  - _ALPHABLEND_TRANS_ON
   - _DIRECTIONAL_LIGHT
   - _DISABLE_ALBEDO_MAP
   - _HOVER_LIGHT
-  - _REFLECTIONS
   - _SPECULAR_HIGHLIGHTS
   - _USE_WORLD_SCALE
   m_InvalidKeywords: []
@@ -25,7 +25,7 @@ Material:
   m_CustomRenderQueue: 2000
   stringTagMap:
     DisableBatching: False
-    RenderType: Opaque
+    RenderType: Transparent
   disabledShaderPasses: []
   m_LockedProperties: 
   m_SavedProperties:
@@ -88,7 +88,7 @@ Material:
     - _AlbedoAlphaMode: 0
     - _AlbedoAssignedAtRuntime: 0
     - _BlendOp: 0
-    - _BlendedClippingWidth: 0
+    - _BlendedClippingWidth: 1
     - _BlurBorderIntensity: 0
     - _BlurMode: 0
     - _BlurTextureIntensity: 1
@@ -97,6 +97,7 @@ Material:
     - _BorderLightOpaque: 0
     - _BorderLightOpaqueAlpha: 1
     - _BorderLightReplacesAlbedo: 0
+    - _BorderLightUsesHoverColor: 0
     - _BorderMinValue: 0.1
     - _BorderWidth: 0.1
     - _BumpScale: 1
@@ -104,7 +105,7 @@ Material:
     - _ClippingBorderWidth: 0.025
     - _ColorWriteMask: 15
     - _CullMode: 2
-    - _CustomMode: 0
+    - _CustomMode: 3
     - _Cutoff: 0.5
     - _DetailNormalMapScale: 1
     - _DirectionalLight: 1
@@ -135,15 +136,17 @@ Material:
     - _GradientAngle: 180
     - _GradientMode: 0
     - _HoverLight: 1
+    - _IgnoreZScale: 0
     - _IndependentCorners: 0
     - _InnerGlow: 0
     - _InnerGlowPower: 4
+    - _Iridescence: 0
     - _IridescenceAngle: -0.78
     - _IridescenceIntensity: 0.5
     - _IridescenceThreshold: 0.05
     - _Metallic: 0
     - _MipmapBias: -2
-    - _Mode: 0
+    - _Mode: 5
     - _NPR: 0
     - _NearLightFade: 0
     - _NearPlaneFade: 0
@@ -153,7 +156,7 @@ Material:
     - _ProximityLight: 0
     - _ProximityLightSubtractive: 0
     - _ProximityLightTwoSided: 0
-    - _Reflections: 1
+    - _Reflections: 0
     - _Refraction: 0
     - _RefractiveIndex: 0
     - _RenderQueueOverride: -1
@@ -169,6 +172,7 @@ Material:
     - _SphericalHarmonics: 0
     - _SrcBlend: 1
     - _SrcBlendAlpha: 1
+    - _Stencil: 0
     - _StencilComparison: 0
     - _StencilOperation: 0
     - _StencilReadMask: 255
@@ -184,13 +188,13 @@ Material:
     - _VertexExtrusionValue: 0
     - _ZOffsetFactor: 0
     - _ZOffsetUnits: 0
-    - _ZTest: 4
+    - _ZTest: 8
     - _ZWrite: 1
     m_Colors:
     - _BlurBackgroundRect: {r: 0, g: 0, b: 1, a: 1}
     - _BorderColor: {r: 1, g: 1, b: 1, a: 0}
     - _ClippingBorderColor: {r: 1, g: 0.2, b: 0, a: 1}
-    - _Color: {r: 0.9411765, g: 0.039215688, b: 0.039215688, a: 1}
+    - _Color: {r: 0.79622644, g: 0.7589951, b: 0.082627185, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _EmissiveColor: {r: 0, g: 0, b: 0, a: 1}
     - _EnvironmentColorX: {r: 1, g: 0, b: 0, a: 1}

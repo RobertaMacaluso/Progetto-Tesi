@@ -50,6 +50,7 @@ public struct ArtifactsStruct
     public GameObject depositButton;
     public GameObject depositInLastShelfButton;
     public GameObject depositList;
+    public GameObject selectShelfButton;
     public GameObject depositInShelfButton;
     public GameObject withdrawButton;
     public AudioSource triggerEntered;
@@ -168,6 +169,7 @@ public class AppManager : MonoBehaviour
         A_Menu.depositButton.SetActive(false);
         A_Menu.depositInShelfButton.SetActive(false);
         A_Menu.depositList.SetActive(false);
+        A_Menu.selectShelfButton.SetActive(false);
         A_Menu.depositInLastShelfButton.SetActive(false);
         A_Menu.withdrawButton.SetActive(false);
         A_Menu.triggerEntered.Stop();
@@ -1435,7 +1437,8 @@ public class AppManager : MonoBehaviour
         else
         {
             Debug.Log("Back");
-            if (!A_Menu.depositList.activeSelf)
+            //if (!A_Menu.depositList.activeSelf)
+            if (!A_Menu.selectShelfButton.activeSelf)
             {
                 DepositConfirmed();
                 StopNavigation();
@@ -1925,6 +1928,7 @@ public class AppManager : MonoBehaviour
     {
         A_Menu.artifactTarget.SetActive(false);
         A_Menu.depositInShelfButton.SetActive(true);
+        A_Menu.selectShelfButton.SetActive(false);
 
         // gestione prop
         Artifact artifact = artifactSelected.GetComponent<ArtifactView>().data;
