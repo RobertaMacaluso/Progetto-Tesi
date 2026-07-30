@@ -5,7 +5,7 @@ public class TaskItem
 {
     public Artifact Artifact;
 
-    public StorageContainer Shelf;
+    //public StorageContainer Shelf;
 
     public StorageContainerView ShelfView;
 

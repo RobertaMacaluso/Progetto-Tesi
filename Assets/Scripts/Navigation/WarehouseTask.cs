@@ -2,11 +2,13 @@ using System.Collections.Generic;
 using UnityEngine;
 
 [System.Serializable]
-public class NavigationTask
+public class WarehouseTask
 {
     public List<TaskItem> Items = new();
 
     public int CurrentIndex = 0;
+
+    public IReadOnlyList<TaskItem> TaskItems => Items;
 
     public TaskItem Current
     {
@@ -92,5 +94,21 @@ public class NavigationTask
 
         if (CurrentIndex >= Items.Count)
             CurrentIndex = Mathf.Max(0, Items.Count - 1);
+    }
+
+    public bool IsEmpty
+    {
+        get
+        {
+            return Items.Count == 0;
+        }
+    }
+
+    public int RemainingCount
+    {
+        get
+        {
+            return Items.Count - CurrentIndex;
+        }
     }
 }

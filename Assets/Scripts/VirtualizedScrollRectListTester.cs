@@ -40,7 +40,7 @@ namespace MixedReality.Toolkit.Examples.Demos
         private readonly string depositTextWithChild = "Continuare a navigare la gerarchia o confermare l'elemento: ";
         private readonly string depositTextNoChild = "Non ci sono ulteriori elementi, confermare: ";
         private List<GameObject> shelvesList = new();
-        private GameObject shelfForDeposit;
+        //private GameObject shelfForDeposit;
         private GameObject currentShelfNavigated;
         private List<GameObject> artifactsList = new();
 
@@ -228,18 +228,30 @@ namespace MixedReality.Toolkit.Examples.Demos
             
         }
 
-        public void SetShelfForDeposit()
+        /*public void SetShelfForDeposit()
         {
             Debug.Log("Scelto scaffale per deposito");
 
             appManager.StartDepositNavigation(currentShelfNavigated);
             shelfForDeposit = currentShelfNavigated;
             appManager.A_Menu.selectShelfButton.SetActive(false);
+        }*/
+
+        public void SetShelfForDeposit()
+        {
+            Debug.Log("Scelto scaffale per deposito");
+
+            //shelfForDeposit = currentShelfNavigated;
+
+            appManager.AddDepositTask(
+                currentShelfNavigated.GetComponent<StorageContainerView>());
+
+            appManager.A_Menu.selectShelfButton.SetActive(false);
         }
 
         public async void DepositInShelf()
         {
-            GameObject artifact = appManager.GetArtifactSelected();
+            /*GameObject artifact = appManager.GetArtifactSelected();
             Artifact data = artifact.GetComponent<ArtifactView>().data;
             data.SetShelfID(shelfForDeposit.GetComponent<StorageContainerView>().data.id);
             
@@ -252,18 +264,35 @@ namespace MixedReality.Toolkit.Examples.Demos
             await appManager.apiService.UpdateArtifact(data);
 
             Debug.Log("Deposit in Shelf");
+            appManager.DepositSucceded();*/
+
+            TaskItem taskItem = appManager.GetCurrentTaskItem();
+
+            Artifact data = taskItem.Artifact;
+
+            //data.SetShelfID(
+            //    shelfForDeposit.GetComponent<StorageContainerView>().data.id);
+            data.SetShelfID(taskItem.ShelfView.data.id);
+
+            CalculateArtifactPose(data, taskItem.ShelfView);
+
+            await appManager.apiService.UpdateArtifact(data);
+
+            Debug.Log("Deposit in Shelf");
+
             appManager.DepositSucceded();
         }
 
-        private void CalculateArtifactPose(GameObject artifact)
+        //private void CalculateArtifactPose(GameObject artifact)
+        private void CalculateArtifactPose(Artifact artifact, StorageContainerView shelfView)
         {
             // calcolo pos e rot del reperto rispetto allo scaffale
             Vector3 localPos =
-                shelfForDeposit.transform.InverseTransformPoint(
+                shelfView.gameObject.transform.InverseTransformPoint(
                     appManager.A_Menu.artifactProp.transform.position);
 
             Quaternion localRot =
-                Quaternion.Inverse(shelfForDeposit.transform.rotation) *
+                Quaternion.Inverse(shelfView.gameObject.transform.rotation) *
                 appManager.A_Menu.artifactProp.transform.rotation;
 
             string position =
@@ -277,7 +306,7 @@ namespace MixedReality.Toolkit.Examples.Demos
                 localRot.z.ToString(CultureInfo.InvariantCulture) + "_" +
                 localRot.w.ToString(CultureInfo.InvariantCulture);
 
-            artifact.GetComponent<ArtifactView>().data.containerLocalPose = position + "/" + rotation;
+            artifact.containerLocalPose = position + "/" + rotation;
         }
 
         public void DepositFinished()
@@ -335,21 +364,21 @@ namespace MixedReality.Toolkit.Examples.Demos
             SetWords(depositList);
         }
 
-        public void DepositInLastShelf()
-        {
-            forDeposit = true;
-            depositList.Clear();
+        //public void DepositInLastShelf()
+        //{
+        //    forDeposit = true;
+        //    depositList.Clear();
 
-            //Debug.Log("Deposit in last shelf");
+        //    //Debug.Log("Deposit in last shelf");
 
-            GameObject artifact = appManager.GetArtifactSelected();
-            //int lastShelvingUnit = PlayerPrefs.GetInt(appManager.artifactPP + artifact.GetComponent<ArtifactView>().data.id + "_Last");
-            int lastShelvingUnit = artifact.GetComponent<ArtifactView>().data.lastShelvingUnit;
-            GameObject shelf = appManager.FindChildRecursive(warehouse.transform, lastShelvingUnit);
+        //    GameObject artifact = appManager.GetArtifactSelected();
+        //    //int lastShelvingUnit = PlayerPrefs.GetInt(appManager.artifactPP + artifact.GetComponent<ArtifactView>().data.id + "_Last");
+        //    int lastShelvingUnit = artifact.GetComponent<ArtifactView>().data.lastShelvingUnit;
+        //    GameObject shelf = appManager.FindChildRecursive(warehouse.transform, lastShelvingUnit);
 
-            appManager.StartDepositNavigation(shelf);
-            shelfForDeposit = shelf;
-        }
+        //    appManager.StartDepositNavigation(shelf);
+        //    shelfForDeposit = shelf;
+        //}
 
         public void Back()
         {
@@ -416,8 +445,8 @@ namespace MixedReality.Toolkit.Examples.Demos
         public void SetForDeposit(bool value)
             { forDeposit = value; }
 
-        public GameObject GetShelfDeposit()
-        { return shelfForDeposit; }
+        //public GameObject GetShelfDeposit()
+        //{ return shelfForDeposit; }
     }
 }
 #pragma warning restore CS1591

@@ -39,7 +39,8 @@ public struct ArtifactsStruct
     public GameObject artifactTitle;
     public GameObject artifactText;
     public GameObject searchGroup;
-    public GameObject startNavigationButton;
+    public GameObject AddPickButton;
+    public GameObject StartTaskButton;
     public GameObject stopNavigationButton;
     public GameObject artifactTarget;
     public GameObject artifactProp;
@@ -67,7 +68,7 @@ public class AppManager : MonoBehaviour
     private List<GameObject> allArtifacts = new();
     private List<GameObject> artifactsOnList = new();
     private GameObject artifactSelected;
-    private NavigationTask currentTask = new NavigationTask();
+    private WarehouseTask currentTask = new WarehouseTask();
     private Vector3 artifactIndicatorScale;
     private Dictionary<int, GameObject> spawnedArtifacts = new Dictionary<int, GameObject>();
     private Dictionary<int, GameObject> spawnedShelves = new Dictionary<int, GameObject>();
@@ -167,6 +168,7 @@ public class AppManager : MonoBehaviour
         A_Menu.solverIndicator.SetActive(false);
         //A_Menu.canvasDistance.SetActive(false);
         A_Menu.navigationText.SetActive(false);
+        A_Menu.StartTaskButton.SetActive(false);
         A_Menu.depositButton.SetActive(false);
         A_Menu.depositInShelfButton.SetActive(false);
         A_Menu.depositList.SetActive(false);
@@ -1382,11 +1384,14 @@ public class AppManager : MonoBehaviour
         A_Menu.artifactVirualizedList.gameObject.SetActive(true);
         A_Menu.searchGroup.SetActive(true);
         A_Menu.artifactBackButton.SetActive(false);
-        A_Menu.startNavigationButton.SetActive(false);
+        A_Menu.AddPickButton.SetActive(false);
         A_Menu.stopNavigationButton.SetActive(false);
         A_Menu.artifactText.SetActive(false);
         A_Menu.navigationText.SetActive(false);
         //artifactSelected = null;
+
+        if (!currentTask.IsEmpty)
+            A_Menu.StartTaskButton.SetActive(true);
 
         VirtualizedScrollRectListTester list = A_Menu.artifactScrollView.GetComponent<VirtualizedScrollRectListTester>();
         if (artifactScrollViewToBeReset)
@@ -1407,8 +1412,11 @@ public class AppManager : MonoBehaviour
             A_Menu.artifactVirualizedList.gameObject.SetActive(true);
             A_Menu.searchGroup.SetActive(true);
             A_Menu.artifactText.SetActive(false);
-            A_Menu.startNavigationButton.SetActive(false);
+            A_Menu.AddPickButton.SetActive(false);
             A_Menu.artifactBackButton.SetActive(false);
+
+            if (!currentTask.IsEmpty)
+                A_Menu.StartTaskButton.SetActive(true);
 
             //if(A_Menu.stopNavigationButton.activeSelf)
 
@@ -1450,6 +1458,27 @@ public class AppManager : MonoBehaviour
         }
     }
 
+    private void ReturnToArtifactList()
+    {
+        A_Menu.artifactVirualizedList.gameObject.SetActive(true);
+        A_Menu.searchGroup.SetActive(true);
+
+        A_Menu.artifactText.SetActive(false);
+        A_Menu.artifactTitle.GetComponent<TextMeshProUGUI>().text = artifactGeneralText;
+        A_Menu.AddPickButton.SetActive(false);
+        A_Menu.artifactBackButton.SetActive(false);
+
+        A_Menu.depositList.SetActive(false);
+        A_Menu.selectShelfButton.SetActive(false);
+
+        vsrltDeposit.SetForDeposit(false);
+
+        if (!currentTask.IsEmpty)
+            A_Menu.StartTaskButton.SetActive(true);
+
+        artifactSelected = null;
+    }
+
     //chiamata quando si clicca sul bottone di un reperto
     public void OnArtifactButtonClicked(int index)
     {
@@ -1464,8 +1493,9 @@ public class AppManager : MonoBehaviour
         artifactSelected = artifactsOnList[index];
         A_Menu.artifactText.SetActive(true);
         A_Menu.artifactBackButton.SetActive(true);
+        A_Menu.StartTaskButton.SetActive(false);
 
-        // TASK
+        /* TASK
         currentTask.Clear();
 
         Artifact artifact =
@@ -1483,11 +1513,12 @@ public class AppManager : MonoBehaviour
         //    Debug.Log("Artifact già presente nel task");
         //}
         //
+        */
 
         if (shelfID != -1)
         {
             A_Menu.artifactText.GetComponent<TextMeshProUGUI>().text = artifactShelfYes + spawnedShelves[shelfID].name.ToString();
-            A_Menu.startNavigationButton.SetActive(true);
+            A_Menu.AddPickButton.SetActive(true);
             
             GameObject shelf = FindChildRecursive(warehouse.transform, shelfID);
             CalculatePath(shelf.transform);
@@ -1666,13 +1697,18 @@ public class AppManager : MonoBehaviour
     {
         Debug.Log("Start navigation. Path count = " + currentPath.Count);
 
-        A_Menu.startNavigationButton.SetActive(false);
+        A_Menu.AddPickButton.SetActive(false);
         A_Menu.stopNavigationButton.SetActive(true);
         A_Menu.solverIndicator.SetActive(true);
         A_Menu.solverIndicator.GetComponent<DirectionalIndicator>().enabled = true;
         A_Menu.solverIndicator.GetComponent<DirectionalIndicator>().DirectionalTarget = A_Menu.artifactTarget.transform;
         A_Menu.artifactTarget.GetComponent<Follow>().enabled = true;
         A_Menu.artifactTarget.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+
+        //
+        A_Menu.artifactVirualizedList.gameObject.SetActive(false);
+        this.gameObject.GetComponent<DictationManager>().StopDictation();
+        A_Menu.searchGroup.SetActive(false);
 
         if (hierarchyRefreshRoutine != null)
         {
@@ -1836,7 +1872,7 @@ public class AppManager : MonoBehaviour
 
         A_Menu.stopNavigationButton.SetActive(false);
 
-        if (vsrltDeposit.GetForDeposit())
+        /*if (vsrltDeposit.GetForDeposit())
             A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = targetReached[1];
         else
             A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = targetReached[0];
@@ -1847,6 +1883,16 @@ public class AppManager : MonoBehaviour
         }
         else
         {
+            ArtifactPositioning();
+        }*/
+        if (currentTask.Current.Operation == TaskOperation.Pick)
+        {
+            A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = targetReached[0];
+            ArtifactReached();
+        }
+        else
+        {
+            A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = targetReached[1];
             ArtifactPositioning();
         }
     }
@@ -1954,7 +2000,8 @@ public class AppManager : MonoBehaviour
         // gestione prop
         //Artifact artifact = artifactSelected.GetComponent<ArtifactView>().data;
         Artifact artifact = currentTask.Current.Artifact;
-        GameObject shelfDeposit = vsrltDeposit.GetShelfDeposit();
+        //GameObject shelfDeposit = vsrltDeposit.GetShelfDeposit();
+        GameObject shelfDeposit = currentTask.Current.ShelfView.gameObject;
 
         A_Menu.artifactProp.SetActive(true);
         A_Menu.artifactProp.transform.position = shelfDeposit.transform.position;
@@ -2169,7 +2216,7 @@ public class AppManager : MonoBehaviour
 
     //            if (shelfID != -1)
     //            {
-    //                A_Menu.startNavigationButton.SetActive(true);
+    //                A_Menu.AddPickButton.SetActive(true);
     //                Debug.Log("Deposit list - navigation button on");
     //            }
     //            else
@@ -2257,7 +2304,7 @@ public class AppManager : MonoBehaviour
 
                 if (shelfID != -1)
                 {
-                    A_Menu.startNavigationButton.SetActive(true);
+                    A_Menu.AddPickButton.SetActive(true);
                     Debug.Log("Deposit list - navigation button on");
                 }
                 else
@@ -2315,22 +2362,127 @@ public class AppManager : MonoBehaviour
         NextStep();
     }
 
-    private TaskItem CreateTaskItem(Artifact artifact)
+    private TaskItem CreateTaskItem(Artifact artifact, StorageContainerView shelfView, TaskOperation operation)
     {
-        StorageContainerView shelfView = null;
+        //StorageContainerView shelfView = null;
 
-        if (artifact.GetShelfID() != -1)
-            shelfView = spawnedShelves[artifact.GetShelfID()].GetComponent<StorageContainerView>();
+        //if (artifact.GetShelfID() != -1)
+        //    shelfView = spawnedShelves[artifact.GetShelfID()].GetComponent<StorageContainerView>();
 
         return new TaskItem
         {
             Artifact = artifact,
             ShelfView = shelfView,
-            Shelf = shelfView != null ? shelfView.data : null,
-            Operation = artifact.GetShelfID() == -1
-                ? TaskOperation.Deposit
-                : TaskOperation.Pick
+            //Shelf = shelfView != null ? shelfView.data : null,
+            Operation = operation,
+            Completed = false
         };
+    }
+
+    public void AddPickTask()
+    {
+        Artifact artifact = artifactSelected.GetComponent<ArtifactView>().data;
+
+        // evita duplicati
+        if (currentTask.ContainsArtifact(artifact.id))
+        {
+            Debug.Log("Reperto già presente nel task");
+            ReturnToArtifactList();
+            return;
+        }
+
+        StorageContainerView shelfView =
+            spawnedShelves[artifact.GetShelfID()].GetComponent<StorageContainerView>();
+
+        currentTask.Add(
+            CreateTaskItem(
+                artifact,
+                shelfView,
+                TaskOperation.Pick));
+
+        Debug.Log($"Aggiunto PRELIEVO: {artifact.name}");
+        Debug.Log($"Task count = {currentTask.Count}");
+
+        ReturnToArtifactList();
+    }
+
+    public void AddDepositInLastShelfTask()
+    {
+        Artifact artifact = artifactSelected.GetComponent<ArtifactView>().data;
+
+        if (currentTask.ContainsArtifact(artifact.id))
+        {
+            Debug.Log("Reperto già presente nel task");
+            ReturnToArtifactList();
+            return;
+        }
+
+        if (artifact.lastShelvingUnit == -1)
+        {
+            Debug.LogWarning("Il reperto non ha uno scaffale precedente");
+            return;
+        }
+
+        StorageContainerView shelfView =
+            spawnedShelves[artifact.lastShelvingUnit].GetComponent<StorageContainerView>();
+
+        currentTask.Add(
+            CreateTaskItem(
+                artifact,
+                shelfView,
+                TaskOperation.Deposit));
+
+        Debug.Log($"Aggiunto DEPOSITO: {artifact.name} -> {shelfView.data.name}");
+        Debug.Log($"Task count = {currentTask.Count}");
+
+        ReturnToArtifactList();
+    }
+
+    public void AddDepositTask(StorageContainerView shelfView)
+    {
+        Artifact artifact = artifactSelected.GetComponent<ArtifactView>().data;
+
+        if (currentTask.ContainsArtifact(artifact.id))
+        {
+            Debug.Log("Il reperto è già presente nel task.");
+            ReturnToArtifactList();
+            return;
+        }
+
+        currentTask.Add(CreateTaskItem(
+            artifact,
+            shelfView,
+            TaskOperation.Deposit));
+
+        Debug.Log($"Aggiunto DEPOSITO verso {shelfView.name}");
+
+        ReturnToArtifactList();
+    }
+
+    public void StartWarehouseTask()
+    {
+        if (currentTask.IsEmpty)
+        {
+            Debug.Log("Il task è vuoto.");
+            return;
+        }
+
+        currentTask.Reset();
+
+        PrepareCurrentTask();
+
+        StartNavigation();
+    }
+
+    private void PrepareCurrentTask()
+    {
+        currentPath.Clear();
+
+        CalculatePath(currentTask.Current.ShelfView.transform);
+
+        Debug.Log(
+            $"Task corrente: {currentTask.Current.Operation} - " +
+            $"{currentTask.Current.Artifact.name}");
     }
 
     private void GoToNextTask()
@@ -2351,6 +2503,11 @@ public class AppManager : MonoBehaviour
         CalculatePath(currentTask.Current.ShelfView.transform);
 
         StartNavigation();
+    }
+
+    public TaskItem GetCurrentTaskItem()
+    {
+        return currentTask.Current;
     }
 
     public void ManageCubeAndSphere(bool toParent)
