@@ -2485,7 +2485,7 @@ public class AppManager : MonoBehaviour
             $"{currentTask.Current.Artifact.name}");
     }
 
-    private void GoToNextTask()
+    /*private void GoToNextTask()
     {
         currentTask.Next();
 
@@ -2503,6 +2503,40 @@ public class AppManager : MonoBehaviour
         CalculatePath(currentTask.Current.ShelfView.transform);
 
         StartNavigation();
+    }*/
+
+    private void GoToNextTask()
+    {
+        currentTask.Next();
+
+        Debug.Log($"Task completato. Rimangono {currentTask.RemainingCount} operazioni.");
+
+        if (!currentTask.HasCurrent)
+        {
+            TaskCompleted();
+            return;
+        }
+
+        PrepareCurrentTask();
+
+        StartNavigation();
+    }
+
+    private void TaskCompleted()
+    {
+        Debug.Log("TASK COMPLETATO!");
+
+        StopNavigation();
+
+        currentTask.Clear();
+
+        A_Menu.StartTaskButton.SetActive(false);
+
+        A_Menu.artifactTitle.GetComponent<TextMeshProUGUI>().text =
+            artifactGeneralText;
+
+        A_Menu.artifactVirualizedList.gameObject.SetActive(true);
+        A_Menu.searchGroup.SetActive(true);
     }
 
     public TaskItem GetCurrentTaskItem()
@@ -2541,7 +2575,8 @@ public class AppManager : MonoBehaviour
 
         await apiService.UpdateArtifact(data);
 
-        BackButtonArtifact();
+        //BackButtonArtifact();
+        GoToNextTask();
     }
     
     public GameObject GetArtifactSelected()
@@ -2571,7 +2606,19 @@ public class AppManager : MonoBehaviour
 
         A_Menu.depositList.SetActive(false);
         A_Menu.artifactText.SetActive(false);
-        vsrltDeposit.DepositFinished();
+
+        //vsrltDeposit.DepositFinished();
+        Invoke(nameof(FinishDepositTask), 1.5f);
+    }
+
+    private void FinishDepositTask()
+    {
+        foreach (var obj in A_Menu.artifactDepositedUI)
+        {
+            obj.SetActive(false);
+        }
+
+        GoToNextTask();
     }
 
     public void DepositConfirmed()

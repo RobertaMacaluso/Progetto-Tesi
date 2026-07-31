@@ -37,10 +37,19 @@ public class WarehouseTask
         }
     }
 
+    //public void Next()
+    //{
+    //    if (CurrentIndex < Items.Count)
+    //        CurrentIndex++;
+    //}
+
     public void Next()
     {
-        if (CurrentIndex < Items.Count)
-            CurrentIndex++;
+        if (!HasCurrent)
+            return;
+
+        Current.Completed = true;
+        CurrentIndex++;
     }
 
     public void Clear()
