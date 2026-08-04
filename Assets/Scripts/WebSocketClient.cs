@@ -10,7 +10,8 @@ public class WebSocketClient : MonoBehaviour
     private WebSocket websocket;
     private bool isConnecting = false;
     private bool manuallyClosed = false;
-    private string IP_Casa = "192.168.178.23";
+    //private string IP_Casa = "192.168.178.23";
+    private string IP_Casa = "192.168.1.13";
     //private string IP_HotSpot = "10.153.54.75";
     private string IP_HotSpot = "10.163.28.75";
 
@@ -35,7 +36,7 @@ public class WebSocketClient : MonoBehaviour
 
         isConnecting = true;
 
-        websocket = new WebSocket($"ws://{IP_HotSpot}:5000/ws");
+        websocket = new WebSocket($"ws://{IP_Casa}:5000/ws");
 
         websocket.OnOpen += () =>
         {

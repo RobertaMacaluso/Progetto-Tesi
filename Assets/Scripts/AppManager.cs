@@ -73,6 +73,7 @@ public class AppManager : MonoBehaviour
     private Dictionary<int, GameObject> spawnedArtifacts = new Dictionary<int, GameObject>();
     private Dictionary<int, GameObject> spawnedShelves = new Dictionary<int, GameObject>();
     private Dictionary<int, GameObject> rooms = new Dictionary<int, GameObject>();
+    private Dictionary<int, int[]> containerHierarchyPaths = new();
     private bool artifactScrollViewToBeReset = false;
     private bool shelvesScrollViewToBeReset = false;
     //public readonly string artifactPP = "ArtifactID_";
@@ -1252,6 +1253,8 @@ public class AppManager : MonoBehaviour
                 }
             }
         }
+
+        BuildContainerHierarchyPaths();
     }
 
 
@@ -1316,6 +1319,58 @@ public class AppManager : MonoBehaviour
             CreateShelvesScrollView(currentShelvesScrollViewParent);
         else
             CreateShelvesScrollView(warehouse);
+
+
+        BuildContainerHierarchyPaths();
+    }
+
+    private void BuildContainerHierarchyPaths()
+    {
+        containerHierarchyPaths.Clear();
+
+        foreach (GameObject shelf in spawnedShelves.Values)
+        {
+            StorageContainerView view = shelf.GetComponent<StorageContainerView>();
+
+            if (view == null || view.data == null)
+                continue;
+
+            containerHierarchyPaths[view.data.id] = GetHierarchyPathIds(view.transform);
+        }
+    }
+
+    private int[] GetHierarchyPathIds(Transform container)
+    {
+        List<Transform> hierarchy = BuildHierarchyPath(container);
+
+        int[] ids = new int[hierarchy.Count];
+
+        for (int i = 0; i < hierarchy.Count; i++)
+        {
+            ids[i] = hierarchy[i]
+                .GetComponent<StorageContainerView>()
+                .data.id;
+        }
+
+        return ids;
+    }
+
+    public void TestDistance()
+    {
+        int[] a = { 0, 1, 5, 7 };
+        int[] b = { 0, 1, 8, 10 };
+
+        Debug.Log(HierarchyDistance.Distance(a, b));
+
+        int[] c = { 0, 1, 5, 7 };
+        int[] d = { 0, 1, 5, 9 };
+
+        Debug.Log(HierarchyDistance.Distance(c, d));
+
+        int[] e = { 0, 1, 5 };
+        int[] f = { 0, 1, 5 };
+
+        Debug.Log(HierarchyDistance.Distance(e, f));
     }
 
     // Update di uno shelf
@@ -1523,7 +1578,7 @@ public class AppManager : MonoBehaviour
             GameObject shelf = FindChildRecursive(warehouse.transform, shelfID);
             CalculatePath(shelf.transform);
 
-            Debug.Log("Path: " + string.Join(" - ", currentPath.Select(go => go.name)));
+            //Debug.Log("Path: " + string.Join(" - ", currentPath.Select(go => go.name)));
         }
         else
         {
@@ -2400,8 +2455,8 @@ public class AppManager : MonoBehaviour
                 shelfView,
                 TaskOperation.Pick));
 
-        Debug.Log($"Aggiunto PRELIEVO: {artifact.name}");
-        Debug.Log($"Task count = {currentTask.Count}");
+        Debug.Log($"Aggiunto PRELIEVO: {artifact.name} <- {shelfView.data.name}");
+        //Debug.Log($"Task count = {currentTask.Count}");
 
         ReturnToArtifactList();
     }
@@ -2454,7 +2509,7 @@ public class AppManager : MonoBehaviour
             shelfView,
             TaskOperation.Deposit));
 
-        Debug.Log($"Aggiunto DEPOSITO verso {shelfView.name}");
+        Debug.Log($"Aggiunto DEPOSITO: {artifact.name} -> {shelfView.name}");
 
         ReturnToArtifactList();
     }
@@ -2468,6 +2523,8 @@ public class AppManager : MonoBehaviour
         }
 
         currentTask.Reset();
+
+        TaskOptimizer.Optimize(currentTask, containerHierarchyPaths);
 
         PrepareCurrentTask();
 
