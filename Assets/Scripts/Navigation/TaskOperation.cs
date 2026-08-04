@@ -5,5 +5,6 @@ using UnityEngine;
 public enum TaskOperation
 {
     Pick,
-    Deposit
+    Deposit,
+    ReturnHub
 }

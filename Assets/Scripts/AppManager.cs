@@ -69,6 +69,7 @@ public class AppManager : MonoBehaviour
     private List<GameObject> artifactsOnList = new();
     private GameObject artifactSelected;
     private WarehouseTask currentTask = new WarehouseTask();
+    private StorageContainerView hubShelf;
     private Vector3 artifactIndicatorScale;
     private Dictionary<int, GameObject> spawnedArtifacts = new Dictionary<int, GameObject>();
     private Dictionary<int, GameObject> spawnedShelves = new Dictionary<int, GameObject>();
@@ -1255,6 +1256,8 @@ public class AppManager : MonoBehaviour
         }
 
         BuildContainerHierarchyPaths();
+
+        FindHubShelf();
     }
 
 
@@ -1322,6 +1325,8 @@ public class AppManager : MonoBehaviour
 
 
         BuildContainerHierarchyPaths();
+
+        FindHubShelf();
     }
 
     private void BuildContainerHierarchyPaths()
@@ -1355,22 +1360,24 @@ public class AppManager : MonoBehaviour
         return ids;
     }
 
-    public void TestDistance()
+    private void FindHubShelf()
     {
-        int[] a = { 0, 1, 5, 7 };
-        int[] b = { 0, 1, 8, 10 };
+        foreach (GameObject obj in spawnedShelves.Values)
+        {
+            StorageContainerView view =
+                obj.GetComponent<StorageContainerView>();
 
-        Debug.Log(HierarchyDistance.Distance(a, b));
+            if (view.data.name.StartsWith("Hub_"))
+            {
+                hubShelf = view;
 
-        int[] c = { 0, 1, 5, 7 };
-        int[] d = { 0, 1, 5, 9 };
+                Debug.Log("Hub trovato: " + view.data.name);
 
-        Debug.Log(HierarchyDistance.Distance(c, d));
+                return;
+            }
+        }
 
-        int[] e = { 0, 1, 5 };
-        int[] f = { 0, 1, 5 };
-
-        Debug.Log(HierarchyDistance.Distance(e, f));
+        Debug.LogError("Hub non trovato!");
     }
 
     // Update di uno shelf
@@ -1927,28 +1934,32 @@ public class AppManager : MonoBehaviour
 
         A_Menu.stopNavigationButton.SetActive(false);
 
-        /*if (vsrltDeposit.GetForDeposit())
-            A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = targetReached[1];
-        else
-            A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = targetReached[0];
+        //if (currentTask.Current.Operation == TaskOperation.Pick)
+        //{
+        //    A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = targetReached[0];
+        //    ArtifactReached();
+        //}
+        //else
+        //{
+        //    A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = targetReached[1];
+        //    ArtifactPositioning();
+        //}
 
-        if (!vsrltDeposit.GetForDeposit())
+        switch (currentTask.Current.Operation)
         {
-            ArtifactReached();
-        }
-        else
-        {
-            ArtifactPositioning();
-        }*/
-        if (currentTask.Current.Operation == TaskOperation.Pick)
-        {
-            A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = targetReached[0];
-            ArtifactReached();
-        }
-        else
-        {
-            A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = targetReached[1];
-            ArtifactPositioning();
+            case TaskOperation.Pick:
+                A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = targetReached[0];
+                ArtifactReached();
+                break;
+
+            case TaskOperation.Deposit:
+                A_Menu.navigationText.GetComponent<TextMeshProUGUI>().text = targetReached[1];
+                ArtifactPositioning();
+                break;
+
+            case TaskOperation.ReturnHub:
+                HubReached();
+                break;
         }
     }
 
@@ -2065,6 +2076,14 @@ public class AppManager : MonoBehaviour
         else
             A_Menu.artifactProp.transform.localScale = new Vector3(0.2f, 0.2f, 0.2f);
         //A_Menu.artifactProp.transform.rotation = shelfDeposit.transform.rotation;
+    }
+
+    private void HubReached()
+    {
+        Debug.Log("Hub raggiunto.");
+
+        // per ora
+        GoToNextTask();
     }
 
     //quando la freccia target entra nel trigger si passa al punto successivo da raggiungere
@@ -2526,6 +2545,8 @@ public class AppManager : MonoBehaviour
 
         TaskOptimizer.Optimize(currentTask, containerHierarchyPaths);
 
+        AddHubTaskIfNeeded();
+
         PrepareCurrentTask();
 
         StartNavigation();
@@ -2537,9 +2558,12 @@ public class AppManager : MonoBehaviour
 
         CalculatePath(currentTask.Current.ShelfView.transform);
 
-        Debug.Log(
-            $"Task corrente: {currentTask.Current.Operation} - " +
-            $"{currentTask.Current.Artifact.name}");
+        if (currentTask.Current.Artifact != null)
+        {
+            Debug.Log(
+                $"Task corrente: {currentTask.Current.Operation} - " +
+                $"{currentTask.Current.Artifact.name}");
+        }
     }
 
     /*private void GoToNextTask()
@@ -2599,6 +2623,41 @@ public class AppManager : MonoBehaviour
     public TaskItem GetCurrentTaskItem()
     {
         return currentTask.Current;
+    }
+
+    private void AddHubTaskIfNeeded()
+    {
+        if (hubShelf == null)
+            return;
+
+        bool containsPick = false;
+
+        foreach (TaskItem item in currentTask.TaskItems)
+        {
+            if (item.Operation == TaskOperation.Pick)
+            {
+                containsPick = true;
+                break;
+            }
+        }
+
+        if (!containsPick)
+            return;
+
+        //currentTask.Add(new TaskItem
+        //{
+        //    Artifact = null,
+        //    ShelfView = hubShelf,
+        //    Operation = TaskOperation.ReturnHub
+        //});
+
+        currentTask.Add(
+            CreateTaskItem(
+                null,
+                hubShelf,
+                TaskOperation.ReturnHub));
+
+        Debug.Log("Task HUB aggiunto.");
     }
 
     public void ManageCubeAndSphere(bool toParent)
