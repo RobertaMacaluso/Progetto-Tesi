@@ -11,7 +11,7 @@ public class WebSocketClient : MonoBehaviour
     private bool isConnecting = false;
     private bool manuallyClosed = false;
     //private string IP_Casa = "192.168.178.23";
-    private string IP_Casa = "192.168.1.13";
+    private string IP_Casa = "192.168.1.12";
     //private string IP_HotSpot = "10.153.54.75";
     private string IP_HotSpot = "10.163.28.75";
 

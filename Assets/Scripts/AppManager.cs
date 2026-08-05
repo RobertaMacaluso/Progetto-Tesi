@@ -1804,15 +1804,15 @@ public class AppManager : MonoBehaviour
         DestinationReached();
     }
 
-    private void TestHierarchy()
-    {
-        var hierarchy = GetCurrentHierarchy();
+    //private void TestHierarchy()
+    //{
+    //    var hierarchy = GetCurrentHierarchy();
 
-        Debug.Log(
-            "Current hierarchy: " +
-            string.Join(" -> ", hierarchy.Select(x => x.name))
-        );
-    }
+    //    Debug.Log(
+    //        "Current hierarchy: " +
+    //        string.Join(" -> ", hierarchy.Select(x => x.name))
+    //    );
+    //}
 
     private List<Transform> GetCurrentHierarchy()
     {
@@ -1826,6 +1826,22 @@ public class AppManager : MonoBehaviour
             return deepest;
 
         return new List<Transform>();
+    }
+
+    private int[] GetCurrentHierarchyIds()
+    {
+        List<Transform> hierarchy = GetCurrentHierarchy();
+
+        int[] ids = new int[hierarchy.Count];
+
+        for (int i = 0; i < hierarchy.Count; i++)
+        {
+            ids[i] = hierarchy[i]
+                .GetComponent<StorageContainerView>()
+                .data.id;
+        }
+
+        return ids;
     }
 
     private void RecalculateElementsToExit()
@@ -2543,7 +2559,7 @@ public class AppManager : MonoBehaviour
 
         currentTask.Reset();
 
-        TaskOptimizer.Optimize(currentTask, containerHierarchyPaths);
+        TaskOptimizer.Optimize(currentTask, containerHierarchyPaths, GetCurrentHierarchyIds());
 
         AddHubTaskIfNeeded();
 

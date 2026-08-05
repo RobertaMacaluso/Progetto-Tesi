@@ -46,12 +46,12 @@ public static class TaskOptimizer
     //    task.Items.AddRange(ordered);
     //}
 
-    public static void Optimize(WarehouseTask task, Dictionary<int, int[]> hierarchyPaths)
+    public static void Optimize(WarehouseTask task, Dictionary<int, int[]> hierarchyPaths, int[] currentHierarchy)
     {
         Debug.Log($"Ordine iniziale: {string.Join(", ", task.Items.Select(go => go.Artifact.name))}");
 
         List<TaskItem> ordered =
-            BuildNearestNeighbor(task.Items, hierarchyPaths);
+            BuildNearestNeighbor(task.Items, hierarchyPaths, currentHierarchy);
 
         Debug.Log($"Ordine ottimizzato: {string.Join(", ", ordered.Select(go => go.Artifact.name))}");
 
@@ -59,15 +59,16 @@ public static class TaskOptimizer
         task.Items.AddRange(ordered);
     }
 
-    private static List<TaskItem> BuildNearestNeighbor(IReadOnlyList<TaskItem> items, Dictionary<int, int[]> hierarchyPaths)
+    private static List<TaskItem> BuildNearestNeighbor(IReadOnlyList<TaskItem> items, Dictionary<int, int[]> hierarchyPaths, int[] currentHierarchy)
     {
         List<TaskItem> remaining = new(items);
         List<TaskItem> ordered = new();
 
-        TaskItem current = GetStartingTask(remaining);
+        //TaskItem current = GetStartingTask(remaining);
+        TaskItem current = GetStartingTask(remaining, hierarchyPaths, currentHierarchy);
 
         ordered.Add(current);
-        remaining.RemoveAt(0);
+        remaining.Remove(current);
 
         while (remaining.Count > 0)
         {
@@ -93,9 +94,27 @@ public static class TaskOptimizer
         return ordered;
     }
 
-    private static TaskItem GetStartingTask(List<TaskItem> remaining)
+    private static TaskItem GetStartingTask(List<TaskItem> remaining, Dictionary<int, int[]> hierarchyPaths, int[] currentHierarchy)
     {
-        return remaining[0];
+        TaskItem best = null;
+        int bestDistance = int.MaxValue;
+
+        foreach (TaskItem candidate in remaining)
+        {
+            int distance = HierarchyDistance.Distance(currentHierarchy, hierarchyPaths[candidate.ShelfView.data.id]);
+
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                best = candidate;
+            }
+        }
+
+        Debug.Log(
+            $"Task iniziale scelto: {best.Artifact.name} " +
+            $"(distanza {bestDistance})");
+
+        return best;
     }
 
     private static int Distance(TaskItem a, TaskItem b, Dictionary<int, int[]> hierarchyPaths)

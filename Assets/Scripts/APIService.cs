@@ -8,7 +8,7 @@ public class APIService
 {
     //static private string ipV4 = "10.153.54.75";
     //static private string IP_Casa = "192.168.178.23";
-    static private string IP_Casa = "192.168.1.13";
+    static private string IP_Casa = "192.168.1.12";
     //static private string IP_HotSpot = "10.153.54.75";
     static private string IP_HotSpot = "10.163.28.75";
     private string datiUrl = $"http://{IP_Casa}:5000/dati";
