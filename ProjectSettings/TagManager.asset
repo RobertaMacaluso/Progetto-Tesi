@@ -10,6 +10,7 @@ TagManager:
   - PositionButton
   - Target
   - Deposit list
+  - Artifact list
   layers:
   - Default
   - TransparentFX

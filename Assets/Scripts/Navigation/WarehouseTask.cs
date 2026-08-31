@@ -94,7 +94,10 @@ public class WarehouseTask
 
     public bool ContainsArtifact(int artifactId)
     {
-        return Items.Exists(x => x.Artifact.id == artifactId);
+        //return Items.Exists(x => x.Artifact.id == artifactId);
+        return Items.Exists(x =>
+            x.Artifact != null &&
+            x.Artifact.id == artifactId);
     }
 
     public void RemoveArtifact(int artifactId)

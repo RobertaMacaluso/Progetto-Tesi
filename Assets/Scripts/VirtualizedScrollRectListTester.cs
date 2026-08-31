@@ -172,6 +172,26 @@ namespace MixedReality.Toolkit.Examples.Demos
                                     HandlePrefab(text.gameObject, true);
                             }
                         }
+                        else if (this.gameObject.tag == "Artifact list")
+                        {
+                            //Artifact artifact = artifactsList[i].GetComponent<ArtifactView>().data;
+                            //Artifact artifact = artifactsList.Find(x => x.name == text.text).GetComponent<ArtifactView>().data;
+                            string artifactName = buttonsNames[i];
+
+                            GameObject artifactGO =
+                                artifactsList.Find(x => x.name == artifactName);
+
+                            Artifact artifact =
+                                artifactGO.GetComponent<ArtifactView>().data;
+
+                            //if (appManager.IsArtifactInCurrentTask(artifact.id))
+                            //    UpdateTaskButton(go);
+                            Debug.Log("setscrollview");
+                            bool inTask = appManager.IsArtifactInCurrentTask(artifact.id);
+
+                            UpdateTaskButton(go, inTask);
+                            //RefreshVisibleButtons();
+                        }
                     }
                 }
 
@@ -417,6 +437,47 @@ namespace MixedReality.Toolkit.Examples.Demos
                 icon.gameObject.SetActive(value);
             }
         
+        }
+
+        private void UpdateTaskButton(GameObject button, bool inTask)
+        {
+            if (inTask)
+            {
+                Debug.Log("Colore verde");
+                ColorUtility.TryParseHtmlString("#0CBE02FF", out var color);
+                button.transform.GetChild(0).GetComponent<RawImage>().color = color;
+
+                //button.GetComponent<BoxCollider>().enabled = false;
+                //button.GetComponent<BoxCollider>().isTrigger = true;
+
+                //button.GetComponentInChildren<UnityEngine.UI.Image>().sprite = "Icon_ChevronRight_F.png";
+            }
+            else
+            {
+                ColorUtility.TryParseHtmlString("#97D8FF51", out var color);
+                button.transform.GetChild(0).GetComponent<RawImage>().color = color;
+
+                //button.GetComponent<BoxCollider>().enabled = true;
+
+                Debug.Log("Colore normale");
+            }
+           
+        }
+
+        public void RefreshVisibleButtons()
+        {
+            for (int i = 0; i < list.ItemCount; i++)
+            {
+                if (!list.TryGetVisible(i, out GameObject go))
+                    continue;
+
+                Artifact artifact =
+                    appManager.GetArtifactOnList(i);
+
+                UpdateTaskButton(
+                    go,
+                    appManager.IsArtifactInCurrentTask(artifact.id));
+            }
         }
 
         public void Searching(string txt)

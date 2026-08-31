@@ -88,6 +88,12 @@ public class DictationManager : MonoBehaviour
         }
     }
 
+    public void ResetText()
+    {
+        inputField.text = "";
+        StopDictation();
+    }
+
     //IEnumerator Dictating()
     //{
     //    yield return new WaitForSeconds(10f);
