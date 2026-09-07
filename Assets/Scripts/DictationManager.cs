@@ -90,6 +90,7 @@ public class DictationManager : MonoBehaviour
 
     public void ResetText()
     {
+        Debug.Log("Reset Text");
         inputField.text = "";
         StopDictation();
     }

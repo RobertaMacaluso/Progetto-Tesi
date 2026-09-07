@@ -13,7 +13,7 @@ PlayerSettings:
   useOnDemandResources: 0
   accelerometerFrequency: 60
   companyName: DefaultCompany
-  productName: Warehouse-3
+  productName: Warehouse-2
   defaultCursor: {fileID: 0}
   cursorHotspot: {x: 0, y: 0}
   m_SplashScreenBackgroundColor: {r: 0.13725491, g: 0.12156863, b: 0.1254902, a: 1}
@@ -142,11 +142,7 @@ PlayerSettings:
   visionOSBundleVersion: 1.0
   tvOSBundleVersion: 1.0
   bundleVersion: 1.0
-  preloadedAssets:
-  - {fileID: 11400000, guid: c677e5c4eb85b7849a8da406775c299d, type: 2}
-  - {fileID: 4869460839599842970, guid: dd330cdcfc8d1e94d8438decbd5741a9, type: 2}
-  - {fileID: 11400000, guid: 96ae244eeada8894dab01c9d03f59bce, type: 2}
-  - {fileID: -7630933458353145215, guid: 29fd5285eec4d29438047e14c2382726, type: 2}
+  preloadedAssets: []
   metroInputSource: 0
   wsaTransparentSwapchain: 0
   m_HolographicPauseOnTrackingLoss: 1
@@ -717,7 +713,7 @@ PlayerSettings:
   apiCompatibilityLevelPerPlatform: {}
   m_RenderingPath: 1
   m_MobileRenderingPath: 1
-  metroPackageName: Warehouse-3
+  metroPackageName: Warehouse-2
   metroPackageVersion: 1.0.0.0
   metroCertificatePath: Assets/WSATestCertificate.pfx
   metroCertificatePassword: 

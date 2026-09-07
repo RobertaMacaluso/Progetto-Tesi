@@ -36,6 +36,7 @@ public struct ArtifactsStruct
     public Transform artifactScrollView;
     public PressableButton artifactButtonPrefab;
     public GameObject artifactBackButton;
+    public GameObject closeButton;
     public GameObject artifactTitle;
     public GameObject artifactText;
     public GameObject searchGroup;
@@ -43,6 +44,7 @@ public struct ArtifactsStruct
     public GameObject startTaskButton;
     public GameObject removeFromTaskButton;
     public GameObject stopNavigationButton;
+    public GameObject returnHubConfirmationUI;
     public GameObject artifactTarget;
     public GameObject artifactProp;
     public GameObject artifactIndicator;
@@ -173,6 +175,7 @@ public class AppManager : MonoBehaviour
         A_Menu.navigationText.SetActive(false);
         A_Menu.removeFromTaskButton.SetActive(false);
         A_Menu.startTaskButton.SetActive(false);
+        A_Menu.returnHubConfirmationUI.SetActive(false);
         A_Menu.depositButton.SetActive(false);
         A_Menu.depositInShelfButton.SetActive(false);
         A_Menu.depositList.SetActive(false);
@@ -1503,7 +1506,7 @@ public class AppManager : MonoBehaviour
                 artifactSelected = null;
                 //Debug.Log(DateTime.Now.ToString("HH:mm:ss.fff") + ". Deposit list - Non attiva");
             }
-            StopNavigation();
+            CleanupNavigation();
             A_Menu.depositList.SetActive(false);
             
         }
@@ -1514,7 +1517,7 @@ public class AppManager : MonoBehaviour
             if (!A_Menu.selectShelfButton.activeSelf)
             {
                 DepositConfirmed();
-                StopNavigation();
+                CleanupNavigation();
                 return;
             }
             else
@@ -1841,6 +1844,7 @@ public class AppManager : MonoBehaviour
         Debug.Log("Start navigation. Path count = " + currentPath.Count);
 
         A_Menu.addPickButton.SetActive(false);
+        A_Menu.closeButton.SetActive(false);
         A_Menu.stopNavigationButton.SetActive(true);
         A_Menu.solverIndicator.SetActive(true);
         A_Menu.solverIndicator.GetComponent<DirectionalIndicator>().enabled = true;
@@ -1853,7 +1857,10 @@ public class AppManager : MonoBehaviour
         else if (currentTask.Current.Operation == TaskOperation.Deposit)
             A_Menu.artifactTitle.GetComponent<TextMeshProUGUI>().text = $"Task corrente: deposito di {currentTask.Current.Artifact.name} in {currentTask.Current.ShelfView.name}";
         else if (currentTask.Current.Operation == TaskOperation.ReturnHub)
+        {
             A_Menu.artifactTitle.GetComponent<TextMeshProUGUI>().text = "Task corrente: ritorno all'hub";
+            //A_Menu.stopNavigationButton.SetActive(false);
+        }
 
         //
         A_Menu.artifactVirualizedList.gameObject.SetActive(false);
@@ -2355,7 +2362,7 @@ public class AppManager : MonoBehaviour
     }
 
     //chiamata quando si interrompe la navigazione verso un reperto o uno scaffale, ma anche dalla funzione del back button e dalla X del pannello reperti
-    //public void StopNavigation()
+    //public void CleanupNavigation()
     //{
     //    A_Menu.artifactTarget.SetActive(false);
     //    A_Menu.artifactProp.SetActive(false);
@@ -2432,7 +2439,7 @@ public class AppManager : MonoBehaviour
     //    //Debug.Log("Deposit list - Stop Navigation");
     //}
 
-    public void StopNavigation()
+    public void CleanupNavigation()
     {
         if (hierarchyRefreshRoutine != null)
         {
@@ -2510,6 +2517,95 @@ public class AppManager : MonoBehaviour
         A_Menu.withdrawButton.SetActive(false);
         A_Menu.depositList.SetActive(false);
         vsrltDeposit.SetForDeposit(false);
+    }
+
+    public void StopNavigation()
+    {
+        Debug.Log("STOP navigation richiesto.");
+
+        if (currentTask.IsEmpty)
+        {
+            CleanupNavigation();
+            return;
+        }
+
+        ShowReturnHubConfirmation();
+    }
+
+    private void ShowReturnHubConfirmation()
+    {
+        A_Menu.returnHubConfirmationUI.SetActive(true);
+    }
+
+    public void CancelReturnToHub()
+    {
+        Debug.Log("STOP: l'utente non vuole tornare all'HUB.");
+
+        A_Menu.returnHubConfirmationUI.SetActive(false);
+
+        CleanupNavigation();
+        currentTask.Clear();
+
+        A_Menu.startTaskButton.SetActive(false);
+
+        A_Menu.artifactTitle.GetComponent<TextMeshProUGUI>().text =
+            artifactGeneralText;
+
+        A_Menu.artifactVirualizedList.gameObject.SetActive(true);
+        A_Menu.searchGroup.SetActive(true);
+        A_Menu.closeButton.SetActive(true);
+    }
+
+    public void ConfirmReturnToHub()
+    {
+        Debug.Log("STOP: ritorno all'HUB confermato.");
+
+        A_Menu.returnHubConfirmationUI.SetActive(false);
+
+        // Cancello le operazioni ancora da eseguire
+        currentTask.Clear();
+
+        // Aggiungo solamente il ritorno HUB
+        currentTask.Add(
+            CreateTaskItem(
+                null,
+                hubShelf,
+                TaskOperation.ReturnHub));
+
+        // Creo il nuovo percorso
+        currentPath.Clear();
+        CalculatePath(hubShelf.transform);
+
+        // Reset SOLO dello stato della navigazione verso la nuova destinazione
+        exitPath.Clear();
+        exitStep = 0;
+
+        step = CalculateCurrentStep();
+        RecalculateElementsToExit();
+
+        // Aggiorno UI
+        A_Menu.artifactTitle.GetComponent<TextMeshProUGUI>().text =
+            "Task corrente: ritorno all'hub";
+
+        // Riattivo la navigazione, senza fare StartNavigation()
+        A_Menu.artifactTarget.SetActive(true);
+        A_Menu.solverIndicator.SetActive(true);
+
+        A_Menu.solverIndicator
+            .GetComponent<DirectionalIndicator>().enabled = true;
+
+        A_Menu.solverIndicator
+            .GetComponent<DirectionalIndicator>().DirectionalTarget =
+            A_Menu.artifactTarget.transform;
+
+        A_Menu.artifactTarget.GetComponent<Follow>().enabled = true;
+        A_Menu.artifactTarget.transform.rotation =
+            Quaternion.Euler(0f, 0f, 0f);
+
+        A_Menu.artifactVirualizedList.gameObject.SetActive(false);
+        A_Menu.searchGroup.SetActive(false);
+
+        NextStep();
     }
 
     //public void ResetPath()
@@ -2737,7 +2833,7 @@ public class AppManager : MonoBehaviour
     {
         Debug.Log("TASK COMPLETATO!");
 
-        StopNavigation();
+        CleanupNavigation();
 
         currentTask.Clear();
 
@@ -2748,6 +2844,7 @@ public class AppManager : MonoBehaviour
 
         A_Menu.artifactVirualizedList.gameObject.SetActive(true);
         A_Menu.searchGroup.SetActive(true);
+        A_Menu.closeButton.SetActive(true);
 
         //artifactScrollViewToBeReset = true;
         //ReturnToArtifactList();
