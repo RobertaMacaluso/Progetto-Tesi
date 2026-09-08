@@ -60,6 +60,10 @@ public class StorageContainer
     // coordinate centro stanza
     public string roomCenterPose;
 
+    // livello della gerarchia mostrata all'utente
+    // -1 = elemento non mostrato nella gerarchia UI
+    public int logicalHierarchyLevel = -1;
+
     public void SetIsShelf(bool value)
     {
         isShelf = value;

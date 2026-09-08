@@ -227,7 +227,7 @@ namespace MixedReality.Toolkit.Examples.Demos
             }
             else
             {
-                if (depositList[i].transform.childCount > 0)
+                /*if (depositList[i].transform.childCount > 0)
                 {
                     //appManager.A_Menu.depositList.SetActive(true);
                     ListForDeposit(depositList[i]);
@@ -242,6 +242,28 @@ namespace MixedReality.Toolkit.Examples.Demos
 
                     // mettere testo che non ha altri figli?
                     appManager.A_Menu.artifactText.GetComponent<TextMeshProUGUI>().text = depositTextNoChild + currentShelfNavigated.name.ToString() + "?";
+                    appManager.A_Menu.depositList.SetActive(false);
+                }*/
+
+                GameObject selected = depositList[i];
+
+                List<GameObject> nextLevel = GetNextLogicalLevel(selected);
+
+                if (nextLevel.Count > 0)
+                {
+                    // Ci sono elementi del livello logico successivo:
+                    // si continua a navigare nella gerarchia.
+                    ListForDeposit(selected);
+                }
+                else
+                {
+                    // Non ci sono ulteriori elementi visibili:
+                    // l'elemento corrente può essere confermato come destinazione.
+                    ListForDeposit(selected);
+
+                    appManager.A_Menu.artifactText.GetComponent<TextMeshProUGUI>().text =
+                        depositTextNoChild + currentShelfNavigated.name + "?";
+
                     appManager.A_Menu.depositList.SetActive(false);
                 }
             }
@@ -351,6 +373,82 @@ namespace MixedReality.Toolkit.Examples.Demos
             this.gameObject.GetComponent<ScrollRect>().verticalNormalizedPosition = 1f;
         }
 
+        private List<GameObject> GetNextLogicalLevel(GameObject parent)
+        {
+            List<GameObject> result = new();
+
+            int currentLevel;
+
+            // La warehouse rappresenta il punto di partenza:
+            // il primo livello della gerarchia UI è il livello 1.
+            if (parent == warehouse)
+            {
+                currentLevel = 0;
+            }
+            else
+            {
+                StorageContainerView view =
+                    parent.GetComponent<StorageContainerView>();
+
+                if (view == null || view.data == null)
+                {
+                    Debug.LogError("StorageContainerView o data mancanti su " + parent.name);
+                    return result;
+                }
+
+                currentLevel = view.data.logicalHierarchyLevel;
+            }
+
+            int targetLevel = currentLevel + 1;
+
+            FindLogicalLevelRecursive(
+                parent.transform,
+                targetLevel,
+                result
+            );
+
+            result.Sort((x, y) => x.name.CompareTo(y.name));
+
+            return result;
+        }
+
+        private void FindLogicalLevelRecursive(Transform parent, int targetLevel, List<GameObject> result)
+        {
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                GameObject child = parent.GetChild(i).gameObject;
+
+                StorageContainerView view =
+                    child.GetComponent<StorageContainerView>();
+
+                if (view == null || view.data == null)
+                    continue;
+
+                int level = view.data.logicalHierarchyLevel;
+
+                if (level == targetLevel)
+                {
+                    // Abbiamo trovato un elemento del livello richiesto.
+                    result.Add(child);
+
+                    // Non scendiamo nei suoi figli:
+                    // appartengono ai livelli successivi.
+                    continue;
+                }
+
+                if (level == -1)
+                {
+                    // Elemento strutturale nascosto nella UI:
+                    // lo attraversiamo per cercare il livello successivo.
+                    FindLogicalLevelRecursive(
+                        child.transform,
+                        targetLevel,
+                        result
+                    );
+                }
+            }
+        }
+
         public void ListForDeposit(GameObject parent)
         {
             forDeposit = true;
@@ -377,10 +475,13 @@ namespace MixedReality.Toolkit.Examples.Demos
                 appManager.A_Menu.selectShelfButton.SetActive(true);
             }
 
-            for (int i = 0; i < parent.transform.childCount; i++)
-                depositList.Add(parent.transform.GetChild(i).gameObject);
-            
-            depositList.Sort((x,y) => x.name.CompareTo(y.name));
+            //for (int i = 0; i < parent.transform.childCount; i++)
+            //    depositList.Add(parent.transform.GetChild(i).gameObject);
+
+            //depositList.Sort((x,y) => x.name.CompareTo(y.name));
+            //SetWords(depositList);
+
+            depositList = GetNextLogicalLevel(parent);
             SetWords(depositList);
         }
 
@@ -400,7 +501,7 @@ namespace MixedReality.Toolkit.Examples.Demos
         //    shelfForDeposit = shelf;
         //}
 
-        public void Back()
+        /*public void Back()
         {
             //GameObject currentParent = depositList[0].transform.parent.gameObject;
             GameObject currentParent = currentShelfNavigated;
@@ -424,6 +525,122 @@ namespace MixedReality.Toolkit.Examples.Demos
                 appManager.BackButtonArtifact();
             }
             //}
+        }*/
+
+        public void Back()
+        {
+            // Siamo già nella schermata iniziale:
+            // mostra le stanze. Un ulteriore Back chiude la gerarchia.
+            if (currentShelfNavigated == null)
+            {
+                Debug.Log("Back dal livello iniziale: chiusura lista.");
+
+                forDeposit = false;
+                appManager.BackButtonArtifact();
+                return;
+            }
+
+            StorageContainerView currentView =
+                currentShelfNavigated.GetComponent<StorageContainerView>();
+
+            if (currentView == null || currentView.data == null)
+            {
+                Debug.LogError(
+                    "StorageContainerView o data mancanti su " +
+                    currentShelfNavigated.name
+                );
+                return;
+            }
+
+            int currentLevel =
+                currentView.data.logicalHierarchyLevel;
+
+            Debug.Log(
+                $"Back da {currentShelfNavigated.name}, " +
+                $"logicalHierarchyLevel = {currentLevel}"
+            );
+
+            // Se siamo al livello 1, dobbiamo tornare
+            // alla schermata iniziale delle stanze.
+            if (currentLevel == 1)
+            {
+                Debug.Log("Back dal livello 1: ritorno alla lista delle stanze.");
+
+                if (!appManager.A_Menu.depositList.activeSelf)
+                    appManager.A_Menu.depositList.SetActive(true);
+
+                appManager.A_Menu.selectShelfButton.SetActive(false);
+
+                ListForDeposit(warehouse);
+
+                return;
+            }
+
+            // Livello precedente.
+            int previousLevel = currentLevel - 1;
+
+            GameObject previousParent =
+                GetLogicalAncestor(
+                    currentShelfNavigated,
+                    previousLevel
+                );
+
+            if (previousParent == null)
+            {
+                Debug.LogError(
+                    $"Impossibile trovare l'ancestor di livello {previousLevel}."
+                );
+                return;
+            }
+
+            Debug.Log(
+                $"Ritorno a {previousParent.name}, " +
+                $"livello {previousLevel}"
+            );
+
+            if (!appManager.A_Menu.depositList.activeSelf)
+                appManager.A_Menu.depositList.SetActive(true);
+
+            ListForDeposit(previousParent);
+        }
+
+        private GameObject GetLogicalAncestor(GameObject current, int targetLevel)
+        {
+            if (current == null || current == warehouse)
+                return null;
+
+            Transform ancestor = current.transform.parent;
+
+            while (ancestor != null && ancestor.gameObject != warehouse)
+            {
+                StorageContainerView view =
+                    ancestor.GetComponent<StorageContainerView>();
+
+                if (view != null && view.data != null)
+                {
+                    if (view.data.logicalHierarchyLevel == targetLevel)
+                        return ancestor.gameObject;
+                }
+
+                ancestor = ancestor.parent;
+            }
+
+            return null;
+        }
+
+        private List<GameObject> GetLogicalLevelUnder(GameObject parent, int targetLevel)
+        {
+            List<GameObject> result = new();
+
+            FindLogicalLevelRecursive(
+                parent.transform,
+                targetLevel,
+                result
+            );
+
+            result.Sort((x, y) => x.name.CompareTo(y.name));
+
+            return result;
         }
 
         public void HandlePrefab(GameObject text, bool value)
