@@ -1,6 +1,8 @@
 using System;
+using System.Collections;
 using System.IO;
 using UnityEngine;
+using System.Globalization;
 
 public class TestLogger : MonoBehaviour
 {
@@ -15,8 +17,15 @@ public class TestLogger : MonoBehaviour
 
     [SerializeField] private int currentTask = 0;
 
+    [Header("Tracking")]
+    [SerializeField] private Transform appManager;
+    [SerializeField] private float trackingInterval = 0.1f;
+
     private string filePath;
     private StreamWriter writer;
+
+    private Coroutine trackingCoroutine;
+    private bool isTracking = false;
 
     public string ParticipantId { get; private set; }
     public string SessionId { get; private set; }
@@ -28,6 +37,23 @@ public class TestLogger : MonoBehaviour
     private void Awake()
     {
         StartNewSession();
+
+        if (appManager == null)
+        {
+            Debug.LogError(
+                "[TestLogger] AppManager Transform is not assigned."
+            );
+        }
+
+        if (trackingInterval <= 0f)
+        {
+            Debug.LogWarning(
+                "[TestLogger] Tracking interval must be greater than 0. " +
+                "Using 0.1 seconds."
+            );
+
+            trackingInterval = 0.1f;
+        }
     }
 
     /// <summary>
@@ -71,7 +97,7 @@ public class TestLogger : MonoBehaviour
 
         // CSV header
         writer.WriteLine(
-            "Timestamp,ParticipantId,Condition,SessionId,Task,Event,ArtifactId,X,Y,Z,Value"
+            "Timestamp;ParticipantId;Condition;SessionId;Task;Event;ArtifactId;X;Y;Z;Value"
         );
 
         writer.Flush();
@@ -83,7 +109,7 @@ public class TestLogger : MonoBehaviour
     }
 
     /// <summary>
-    /// Sets the task number.
+    /// Sets the task number manually.
     /// </summary>
     public void SetTask(int taskNumber)
     {
@@ -100,7 +126,10 @@ public class TestLogger : MonoBehaviour
     {
         if (participantId < 0)
         {
-            Debug.LogWarning("[TestLogger] Participant ID cannot be negative.");
+            Debug.LogWarning(
+                "[TestLogger] Participant ID cannot be negative."
+            );
+
             return;
         }
 
@@ -136,8 +165,224 @@ public class TestLogger : MonoBehaviour
         return PlayerPrefs.GetInt(PlayerPrefsKey, 0);
     }
 
+    /// <summary>
+    /// Starts the next task.
+    /// Called when the Player exits the start/end zone.
+    /// </summary>
+    public void StartNextTask()
+    {
+        // Safety check: don't start a new task if one is already active.
+        if (isTracking)
+        {
+            Debug.LogWarning(
+                "[TestLogger] A task is already active. " +
+                "Ignoring StartNextTask()."
+            );
+
+            return;
+        }
+
+        currentTask++;
+
+        Debug.Log(
+            $"[TestLogger] Task {currentTask} started."
+        );
+
+        WriteEvent("TaskStarted");
+
+        StartTracking();
+    }
+
+    /// <summary>
+    /// Ends the current task.
+    /// Called when the Player enters the start/end zone.
+    /// </summary>
+    public void EndCurrentTask()
+    {
+        if (currentTask == 0)
+        {
+            Debug.LogWarning(
+                "[TestLogger] EndCurrentTask called before any task started."
+            );
+
+            return;
+        }
+
+        if (!isTracking)
+        {
+            Debug.LogWarning(
+                $"[TestLogger] Task {currentTask} is not currently being tracked."
+            );
+
+            return;
+        }
+
+        // Save one final position before stopping
+        LogCurrentPosition();
+
+        StopTracking();
+
+        WriteEvent("TaskCompleted");
+
+        Debug.Log(
+            $"[TestLogger] Task {currentTask} ended."
+        );
+    }
+
+    /// <summary>
+    /// Starts collecting the AppManager position.
+    /// </summary>
+    private void StartTracking()
+    {
+        if (appManager == null)
+        {
+            Debug.LogError(
+                "[TestLogger] Cannot start tracking: AppManager is not assigned."
+            );
+
+            return;
+        }
+
+        if (trackingCoroutine != null)
+        {
+            StopCoroutine(trackingCoroutine);
+        }
+
+        isTracking = true;
+
+        trackingCoroutine = StartCoroutine(TrackPosition());
+
+        Debug.Log(
+            $"[TestLogger] Position tracking started for Task {currentTask}."
+        );
+    }
+
+    /// <summary>
+    /// Stops collecting the AppManager position.
+    /// </summary>
+    private void StopTracking()
+    {
+        isTracking = false;
+
+        if (trackingCoroutine != null)
+        {
+            StopCoroutine(trackingCoroutine);
+            trackingCoroutine = null;
+        }
+
+        Debug.Log(
+            $"[TestLogger] Position tracking stopped for Task {currentTask}."
+        );
+    }
+
+    /// <summary>
+    /// Coroutine that samples the AppManager position at fixed intervals.
+    /// </summary>
+    private IEnumerator TrackPosition()
+    {
+        while (isTracking)
+        {
+            LogCurrentPosition();
+
+            yield return new WaitForSeconds(trackingInterval);
+        }
+
+        trackingCoroutine = null;
+    }
+
+    /// <summary>
+    /// Logs the current AppManager position.
+    /// </summary>
+    private void LogCurrentPosition()
+    {
+        if (appManager == null)
+        {
+            return;
+        }
+
+        Vector3 position = appManager.position;
+
+        WriteCsvLine(
+            "Position",
+            "",
+            position.x,
+            position.y,
+            position.z,
+            ""
+        );
+    }
+
+    /// <summary>
+    /// Writes a generic event to the CSV.
+    /// </summary>
+    private void WriteEvent(string eventName)
+    {
+        WriteCsvLine(
+            eventName,
+            "",
+            null,
+            null,
+            null,
+            ""
+        );
+    }
+
+    /// <summary>
+    /// Writes one complete CSV line.
+    /// </summary>
+    private void WriteCsvLine(
+      string eventName,
+      string artifactId,
+      float? x,
+      float? y,
+      float? z,
+      string value)
+    {
+        if (writer == null)
+        {
+            Debug.LogWarning(
+                "[TestLogger] Cannot write to CSV: writer is null."
+            );
+
+            return;
+        }
+
+        string timestamp = DateTime.Now.ToString(
+            "yyyy-MM-dd HH:mm:ss.fff"
+        );
+
+        string xValue = x.HasValue
+            ? x.Value.ToString("F4", CultureInfo.InvariantCulture)
+            : "";
+
+        string yValue = y.HasValue
+            ? y.Value.ToString("F4", CultureInfo.InvariantCulture)
+            : "";
+
+        string zValue = z.HasValue
+            ? z.Value.ToString("F4", CultureInfo.InvariantCulture)
+            : "";
+
+        writer.WriteLine(
+            $"{timestamp};" +
+            $"{ParticipantId};" +
+            $"{condition};" +
+            $"{SessionId};" +
+            $"{currentTask};" +
+            $"{eventName};" +
+            $"{artifactId};" +
+            $"{xValue};" +
+            $"{yValue};" +
+            $"{zValue};" +
+            $"{value}"
+        );
+
+        writer.Flush();
+    }
+
     private void OnDestroy()
     {
+        StopTracking();
         CloseLog();
     }
 
@@ -153,7 +398,9 @@ public class TestLogger : MonoBehaviour
             writer.Dispose();
             writer = null;
 
-            Debug.Log($"[TestLogger] Log closed: {filePath}");
+            Debug.Log(
+                $"[TestLogger] Log closed: {filePath}"
+            );
         }
     }
 }
