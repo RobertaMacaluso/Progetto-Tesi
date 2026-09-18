@@ -412,7 +412,47 @@ namespace MixedReality.Toolkit.Examples.Demos
             return result;
         }
 
-        private void FindLogicalLevelRecursive(Transform parent, int targetLevel, List<GameObject> result)
+        //private void FindLogicalLevelRecursive(Transform parent, int targetLevel, List<GameObject> result)
+        //{
+        //    for (int i = 0; i < parent.childCount; i++)
+        //    {
+        //        GameObject child = parent.GetChild(i).gameObject;
+
+        //        StorageContainerView view =
+        //            child.GetComponent<StorageContainerView>();
+
+        //        if (view == null || view.data == null)
+        //            continue;
+
+        //        int level = view.data.logicalHierarchyLevel;
+
+        //        if (level == targetLevel)
+        //        {
+        //            // Abbiamo trovato un elemento del livello richiesto.
+        //            result.Add(child);
+
+        //            // Non scendiamo nei suoi figli:
+        //            // appartengono ai livelli successivi.
+        //            continue;
+        //        }
+
+        //        if (level == -1)
+        //        {
+        //            // Elemento strutturale nascosto nella UI:
+        //            // lo attraversiamo per cercare il livello successivo.
+        //            FindLogicalLevelRecursive(
+        //                child.transform,
+        //                targetLevel,
+        //                result
+        //            );
+        //        }
+        //    }
+        //}
+
+        private void FindLogicalLevelRecursive(
+            Transform parent,
+            int targetLevel,
+            List<GameObject> result)
         {
             for (int i = 0; i < parent.childCount; i++)
             {
@@ -426,26 +466,22 @@ namespace MixedReality.Toolkit.Examples.Demos
 
                 int level = view.data.logicalHierarchyLevel;
 
+                // Attraversiamo solo il livello cercato
+                // e gli elementi strutturali nascosti (-1).
+                if (level != targetLevel && level != -1)
+                    continue;
+
                 if (level == targetLevel)
                 {
-                    // Abbiamo trovato un elemento del livello richiesto.
                     result.Add(child);
-
-                    // Non scendiamo nei suoi figli:
-                    // appartengono ai livelli successivi.
-                    continue;
                 }
 
-                if (level == -1)
-                {
-                    // Elemento strutturale nascosto nella UI:
-                    // lo attraversiamo per cercare il livello successivo.
-                    FindLogicalLevelRecursive(
-                        child.transform,
-                        targetLevel,
-                        result
-                    );
-                }
+                // Continuiamo anche dopo aver trovato una corrispondenza.
+                FindLogicalLevelRecursive(
+                    child.transform,
+                    targetLevel,
+                    result
+                );
             }
         }
 

@@ -223,88 +223,107 @@ public class AppManager : MonoBehaviour
     }
 
     // Update is called once per frame
+    //void Update()
+    //{
+    //    if (A_Menu.canvasDistance.activeSelf)
+    //    {
+    //        DirectionalIndicator directionalIndicator = A_Menu.solverIndicator.GetComponent<DirectionalIndicator>();
+    //        float distance = Vector3.Distance(A_Menu.artifactTarget.transform.position, this.gameObject.transform.position);
+    //        int d = Mathf.FloorToInt(distance);
+
+    //        //if (directionalIndicator.DirectionalTarget == A_Menu.artifactTarget.transform)
+    //        //{
+    //            if (d > 1)
+    //            {
+    //                distanceText.text = d.ToSafeString() + "m";
+
+    //                if (!directionalIndicator.enabled) // && directionalIndicator.DirectionalTarget == A_Menu.artifactTarget.transform)
+    //                {
+    //                    //solverRenderer.enabled = true;
+    //                    //distancePlate.SetActive(false);
+    //                    A_Menu.canvasDistance.GetComponent<Follow>().enabled = false;
+    //                    directionalIndicator.enabled = true;
+    //                }
+    //            }
+    //            else
+    //            {
+    //                distanceText.text = "<1m";
+
+    //                if (directionalIndicator.enabled && directionalIndicator.DirectionalTarget == A_Menu.artifactTarget.transform)
+    //                {
+    //                    solverRenderer.enabled = false;
+    //                    distancePlate.SetActive(true);
+    //                    A_Menu.canvasDistance.GetComponent<Follow>().enabled = true;
+
+    //                    //if (directionalIndicator.DirectionalTarget == A_Menu.artifactTarget.transform)
+    //                    directionalIndicator.enabled = false;
+    //                }
+    //            }
+
+    //        if (solverRenderer.enabled == true && distancePlate.activeSelf) //solverRenderer.enabled == true && 
+    //            {
+    //                distancePlate.SetActive(false);
+    //                A_Menu.canvasDistance.GetComponent<Follow>().enabled = false;
+    //                A_Menu.canvasDistance.GetComponent<ParentConstraint>().enabled = true;
+    //                A_Menu.canvasDistance.transform.localPosition = new Vector3(0f, 0.15f, 0f);
+    //                A_Menu.canvasDistance.transform.localScale = Vector3.one * 0.02f;
+    //                //Debug.Log("Scala 0.02");
+    //            }
+
+    //            if (solverRenderer.enabled == false && !distancePlate.activeSelf) //solverRenderer.enabled == false && 
+    //            {
+    //                distancePlate.SetActive(true);
+    //                A_Menu.canvasDistance.GetComponent<Follow>().enabled = true;
+    //                A_Menu.canvasDistance.GetComponent<ParentConstraint>().enabled = false;
+    //            }
+    //    }
+    //}
+
     void Update()
     {
         if (A_Menu.canvasDistance.activeSelf)
         {
-            DirectionalIndicator directionalIndicator = A_Menu.solverIndicator.GetComponent<DirectionalIndicator>();
-            float distance = Vector3.Distance(A_Menu.artifactTarget.transform.position, this.gameObject.transform.position);
-            int d = Mathf.FloorToInt(distance);
+            DirectionalIndicator directionalIndicator =
+                A_Menu.solverIndicator.GetComponent<DirectionalIndicator>();
 
-            //if (directionalIndicator.DirectionalTarget == A_Menu.artifactTarget.transform)
-            //{
-                if (d > 1)
-                {
-                    distanceText.text = d.ToSafeString() + "m";
+            // Il solver rimane abilitato a qualsiasi distanza.
+            if (!directionalIndicator.enabled)
+            {
+                directionalIndicator.enabled = true;
+            }
 
-                    if (!directionalIndicator.enabled) // && directionalIndicator.DirectionalTarget == A_Menu.artifactTarget.transform)
-                    {
-                        //solverRenderer.enabled = true;
-                        //distancePlate.SetActive(false);
-                        A_Menu.canvasDistance.GetComponent<Follow>().enabled = false;
-                        directionalIndicator.enabled = true;
-                    }
-                }
-                else
-                {
-                    distanceText.text = "<1m";
+            float distance = Vector3.Distance(
+                A_Menu.artifactTarget.transform.position,
+                this.gameObject.transform.position
+            );
 
-                    if (directionalIndicator.enabled && directionalIndicator.DirectionalTarget == A_Menu.artifactTarget.transform)
-                    {
-                        solverRenderer.enabled = false;
-                        distancePlate.SetActive(true);
-                        A_Menu.canvasDistance.GetComponent<Follow>().enabled = true;
-                        
-                        //if (directionalIndicator.DirectionalTarget == A_Menu.artifactTarget.transform)
-                        directionalIndicator.enabled = false;
-                    }
-                }
+            // Mostra la distanza anche sotto un metro, con un decimale.
+            distanceText.text = distance.ToString("F1") + " m";
 
-            //if (!directionalIndicator.DirectionalTarget == A_Menu.artifactTarget.transform)
-            //{
-            //    if (dire)
-            //    directionalIndicator.enabled = true;
-            //    return; 
-            //}
+            // Quando la freccia è visibile, la distanza rimane associata.
+            if (solverRenderer.enabled && distancePlate.activeSelf)
+            {
+                distancePlate.SetActive(false);
 
-            if (solverRenderer.enabled == true && distancePlate.activeSelf) //solverRenderer.enabled == true && 
-                {
-                    distancePlate.SetActive(false);
-                    A_Menu.canvasDistance.GetComponent<Follow>().enabled = false;
-                    A_Menu.canvasDistance.GetComponent<ParentConstraint>().enabled = true;
-                    A_Menu.canvasDistance.transform.localPosition = new Vector3(0f, 0.15f, 0f);
-                    A_Menu.canvasDistance.transform.localScale = Vector3.one * 0.02f;
-                    //Debug.Log("Scala 0.02");
-                }
+                A_Menu.canvasDistance.GetComponent<Follow>().enabled = false;
+                A_Menu.canvasDistance.GetComponent<ParentConstraint>().enabled = true;
 
-                if (solverRenderer.enabled == false && !distancePlate.activeSelf) //solverRenderer.enabled == false && 
-                {
-                    distancePlate.SetActive(true);
-                    A_Menu.canvasDistance.GetComponent<Follow>().enabled = true;
-                    A_Menu.canvasDistance.GetComponent<ParentConstraint>().enabled = false;
-                }
-            //}
-            //else if (directionalIndicator.DirectionalTarget == A_Menu.artifactIndicator.transform)
-            //{
-            //    if (d > 1)
-            //    {
-            //        distanceText.text = d.ToSafeString() + "m";
-            //    }
-            //    else
-            //    {
-            //        distanceText.text = "<1m";
-            //    }
+                A_Menu.canvasDistance.transform.localPosition =
+                    new Vector3(0f, 0.15f, 0f);
 
-            //    if (distancePlate.activeSelf || !directionalIndicator.enabled)
-            //    {
-            //        distancePlate.SetActive(false);
-            //        directionalIndicator.enabled = true;
-            //        A_Menu.canvasDistance.GetComponent<Follow>().enabled = false;
-            //        A_Menu.canvasDistance.GetComponent<ParentConstraint>().enabled = true;
-            //        A_Menu.canvasDistance.transform.localPosition = new Vector3(0f, 0.15f, 0f);
-            //        A_Menu.canvasDistance.transform.localScale = Vector3.one * 0.02f;
-            //    }
-            //}
+                A_Menu.canvasDistance.transform.localScale =
+                    Vector3.one * 0.02f;
+            }
+
+            // Quando la freccia non è visibile, la distanza
+            // continua a essere mostrata sul pannello.
+            if (!solverRenderer.enabled && !distancePlate.activeSelf)
+            {
+                distancePlate.SetActive(true);
+
+                A_Menu.canvasDistance.GetComponent<Follow>().enabled = true;
+                A_Menu.canvasDistance.GetComponent<ParentConstraint>().enabled = false;
+            }
         }
     }
 
