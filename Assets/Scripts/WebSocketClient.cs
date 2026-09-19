@@ -83,20 +83,61 @@ public class WebSocketClient : MonoBehaviour
 
             switch (baseMsg.eventType)
             {
-                //DELETE
-                case "delete":
+                ////DELETE
+                //case "delete":
 
-                    Debug.Log("WebSocket delete");
+                //    Debug.Log("WebSocket delete");
+
+                //    DeleteMessage msg = JsonUtility.FromJson<DeleteMessage>(json);
+
+                //    UnityMainThreadDispatcher.Instance().Enqueue(() =>
+                //    {
+                //        manager.DeleteArtifact(msg.id);
+                //    });
+
+                //    break;
+
+                case "delete":
 
                     DeleteMessage msg = JsonUtility.FromJson<DeleteMessage>(json);
 
-                    UnityMainThreadDispatcher.Instance().Enqueue(() =>
+                    switch (baseMsg.entityType)
                     {
-                        manager.DeleteArtifact(msg.id);
-                    });
+                        case "artifact":
+
+                            Debug.Log("WebSocket artifact delete: " + msg.id);
+
+                            UnityMainThreadDispatcher.Instance().Enqueue(() =>
+                            {
+                                manager.DeleteArtifact(msg.id);
+                            });
+
+                            break;
+
+                        case "shelf":
+
+                            Debug.Log("WebSocket shelf delete: " + msg.id);
+
+                            UnityMainThreadDispatcher.Instance().Enqueue(async () =>
+                            {
+                                await manager.RefreshShelves();
+                                await manager.RefreshArtifacts();
+                            });
+
+                            break;
+
+                        default:
+
+                            Debug.LogWarning(
+                                "Eliminazione ricevuta per un tipo di entità sconosciuto: "
+                                + baseMsg.entityType
+                            );
+
+                            break;
+                    }
 
                     break;
- 
+
 
                 //CREATE
                 case "create":

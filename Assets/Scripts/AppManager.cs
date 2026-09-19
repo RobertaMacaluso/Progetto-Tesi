@@ -1,4 +1,4 @@
-﻿using Microsoft.MixedReality.WorldLocking.Core;
+using Microsoft.MixedReality.WorldLocking.Core;
 using MixedReality.Toolkit.Examples.Demos;
 using MixedReality.Toolkit.SpatialManipulation;
 using MixedReality.Toolkit.UX;
@@ -41,6 +41,7 @@ public struct ArtifactsStruct
     public GameObject artifactText;
     public GameObject searchGroup;
     public GameObject addPickButton;
+    public GameObject transferButton;
     public GameObject startTaskButton;
     public GameObject removeFromTaskButton;
     public GameObject stopNavigationButton;
@@ -72,6 +73,8 @@ public class AppManager : MonoBehaviour
     private List<GameObject> artifactsOnList = new();
     private GameObject artifactSelected;
     private WarehouseTask currentTask = new WarehouseTask();
+    private bool isChoosingDestination = false;
+    private bool isSelectingTransfer = false;
     private StorageContainerView hubShelf;
     private Vector3 artifactIndicatorScale;
     private Dictionary<int, GameObject> spawnedArtifacts = new Dictionary<int, GameObject>();
@@ -177,6 +180,7 @@ public class AppManager : MonoBehaviour
         A_Menu.startTaskButton.SetActive(false);
         A_Menu.returnHubConfirmationUI.SetActive(false);
         A_Menu.depositButton.SetActive(false);
+        A_Menu.transferButton.SetActive(false);
         A_Menu.depositInShelfButton.SetActive(false);
         A_Menu.depositList.SetActive(false);
         A_Menu.selectShelfButton.SetActive(false);
@@ -1466,6 +1470,12 @@ public class AppManager : MonoBehaviour
     //crea la scrollView con i reperti
     public void CreateArtifactScrollView()
     {
+        ResetArtifactSelected();
+
+        isChoosingDestination = false;
+        isSelectingTransfer = false;
+        HideArtifactActionButtons();
+
         A_Menu.artifactTitle.GetComponent<TextMeshProUGUI>().text = artifactGeneralText;
         A_Menu.artifactVirualizedList.gameObject.SetActive(true);
         A_Menu.searchGroup.SetActive(true);
@@ -1492,6 +1502,12 @@ public class AppManager : MonoBehaviour
     //gestione del pulsante per tornare indietro nelle varie situazioni in cui può essere cliccato
     public void BackButtonArtifact()
     {
+        if (isChoosingDestination)
+        {
+            vsrltDeposit.Back();
+            return;
+        }
+
         //Debug.Log("Deposit List value: " +  vsrltDeposit.GetForDeposit());
         if (!vsrltDeposit.GetForDeposit())
         {
@@ -1511,20 +1527,23 @@ public class AppManager : MonoBehaviour
             //{ i++; }
             //OnArtifactButtonClicked(i);
 
-            if (A_Menu.depositList.activeSelf)
-            {
-                int i = 0;
-                while (allArtifacts[i] != artifactSelected)
-                { i++; }
+            //if (A_Menu.depositList.activeSelf)
+            //{
+            //    int i = 0;
+            //    while (allArtifacts[i] != artifactSelected)
+            //    { i++; }
 
-                //Debug.Log(DateTime.Now.ToString("HH:mm:ss.fff") + ". Deposit list - Attiva");
-                OnArtifactButtonClicked(i);
-            }
-            else
-            { 
-                artifactSelected = null;
-                //Debug.Log(DateTime.Now.ToString("HH:mm:ss.fff") + ". Deposit list - Non attiva");
-            }
+            //    //Debug.Log(DateTime.Now.ToString("HH:mm:ss.fff") + ". Deposit list - Attiva");
+            //    OnArtifactButtonClicked(i);
+            //}
+            //else
+            //{ 
+            //    artifactSelected = null;
+            //    //Debug.Log(DateTime.Now.ToString("HH:mm:ss.fff") + ". Deposit list - Non attiva");
+            //}
+
+            artifactSelected = null;
+
             CleanupNavigation();
             A_Menu.depositList.SetActive(false);
             
@@ -1546,6 +1565,10 @@ public class AppManager : MonoBehaviour
 
     private void ReturnToArtifactList()
     {
+        isChoosingDestination = false;
+        isSelectingTransfer = false;
+        HideArtifactActionButtons();
+
         if (artifactScrollViewToBeReset)
         {
             VirtualizedScrollRectListTester list = A_Menu.artifactScrollView.GetComponent<VirtualizedScrollRectListTester>();
@@ -1628,6 +1651,10 @@ public class AppManager : MonoBehaviour
 
     public void OnArtifactButtonClicked(int index)
     {
+        isChoosingDestination = false;
+        isSelectingTransfer = false;
+        HideArtifactActionButtons();
+
         currentPath.Clear();
 
         GameObject selectedArtifact = artifactsOnList[index];
@@ -1672,6 +1699,7 @@ public class AppManager : MonoBehaviour
                 artifactShelfYes + spawnedShelves[shelfID].name;
 
             A_Menu.addPickButton.SetActive(true);
+            A_Menu.transferButton.SetActive(true);
 
             GameObject shelf =
                 FindChildRecursive(warehouse.transform, shelfID);
@@ -1860,6 +1888,14 @@ public class AppManager : MonoBehaviour
     //inizia la navigazione per portare l'utente al reperto
     public void StartNavigation()
     {
+        HideArtifactActionButtons();
+        A_Menu.withdrawButton.SetActive(false);
+        A_Menu.depositInShelfButton.SetActive(false);
+        A_Menu.selectShelfButton.SetActive(false);
+        A_Menu.artifactIndicator.SetActive(false);
+        A_Menu.artifactIndicator.transform.SetParent(null);
+        A_Menu.artifactProp.SetActive(false);
+
         Debug.Log("Start navigation. Path count = " + currentPath.Count);
 
         A_Menu.addPickButton.SetActive(false);
@@ -1871,10 +1907,14 @@ public class AppManager : MonoBehaviour
         A_Menu.artifactTarget.GetComponent<Follow>().enabled = true;
         A_Menu.artifactTarget.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
 
+        string operationPrefix = currentTask.Current.IsTransfer
+            ? "Trasferimento"
+            : "Task corrente";
+
         if (currentTask.Current.Operation == TaskOperation.Pick)
-            A_Menu.artifactTitle.GetComponent<TextMeshProUGUI>().text = $"Task corrente: prelievo di {currentTask.Current.Artifact.name} da {currentTask.Current.ShelfView.name}";
+            A_Menu.artifactTitle.GetComponent<TextMeshProUGUI>().text = $"{operationPrefix}: prelievo di {currentTask.Current.Artifact.name} da {currentTask.Current.ShelfView.name}";
         else if (currentTask.Current.Operation == TaskOperation.Deposit)
-            A_Menu.artifactTitle.GetComponent<TextMeshProUGUI>().text = $"Task corrente: deposito di {currentTask.Current.Artifact.name} in {currentTask.Current.ShelfView.name}";
+            A_Menu.artifactTitle.GetComponent<TextMeshProUGUI>().text = $"{operationPrefix}: deposito di {currentTask.Current.Artifact.name} in {currentTask.Current.ShelfView.name}";
         else if (currentTask.Current.Operation == TaskOperation.ReturnHub)
         {
             A_Menu.artifactTitle.GetComponent<TextMeshProUGUI>().text = "Task corrente: ritorno all'hub";
@@ -2460,6 +2500,10 @@ public class AppManager : MonoBehaviour
 
     public void CleanupNavigation()
     {
+        isChoosingDestination = false;
+        isSelectingTransfer = false;
+        HideArtifactActionButtons();
+
         if (hierarchyRefreshRoutine != null)
         {
             StopCoroutine(hierarchyRefreshRoutine);
@@ -2509,6 +2553,7 @@ public class AppManager : MonoBehaviour
                 if (shelfID != -1)
                 {
                     A_Menu.addPickButton.SetActive(true);
+                    A_Menu.transferButton.SetActive(true);
                     Debug.Log("Deposit list - navigation button on");
                 }
                 else
@@ -2672,6 +2717,141 @@ public class AppManager : MonoBehaviour
         };
     }
 
+    private void HideArtifactActionButtons()
+    {
+        A_Menu.addPickButton.SetActive(false);
+        A_Menu.transferButton.SetActive(false);
+        A_Menu.depositButton.SetActive(false);
+        A_Menu.depositInLastShelfButton.SetActive(false);
+        A_Menu.removeFromTaskButton.SetActive(false);
+    }
+
+    public void StartTransferSelection()
+    {
+        BeginDestinationSelection(true);
+    }
+
+    public void StartDepositSelection()
+    {
+        BeginDestinationSelection(false);
+    }
+
+    private void BeginDestinationSelection(bool transfer)
+    {
+        if (artifactSelected == null)
+            return;
+
+        Artifact artifact = artifactSelected.GetComponent<ArtifactView>().data;
+
+        if (currentTask.ContainsArtifact(artifact.id))
+        {
+            Debug.LogWarning("Il reperto è già presente nel task.");
+            return;
+        }
+
+        if (transfer && artifact.GetShelfID() == -1)
+        {
+            Debug.LogWarning("Il transfer richiede un reperto già depositato.");
+            return;
+        }
+
+        if (!transfer && artifact.GetShelfID() != -1)
+        {
+            Debug.LogWarning("Per un reperto già depositato utilizzare il transfer.");
+            return;
+        }
+
+        isChoosingDestination = true;
+        isSelectingTransfer = transfer;
+
+        HideArtifactActionButtons();
+        A_Menu.artifactVirualizedList.gameObject.SetActive(false);
+        A_Menu.searchGroup.SetActive(false);
+        A_Menu.startTaskButton.SetActive(false);
+        A_Menu.artifactText.SetActive(true);
+        A_Menu.artifactBackButton.SetActive(true);
+        A_Menu.depositList.SetActive(true);
+        A_Menu.selectShelfButton.SetActive(false);
+
+        A_Menu.artifactTitle.GetComponent<TextMeshProUGUI>().text = transfer
+            ? $"Trasferimento di {artifact.name}: scegli la destinazione"
+            : $"Deposito di {artifact.name}: scegli la destinazione";
+
+        vsrltDeposit.ListForDeposit(warehouse);
+    }
+
+    public void CancelDestinationSelection()
+    {
+        ReturnToArtifactList();
+    }
+
+    public void ConfirmDestinationSelection(StorageContainerView destination)
+    {
+        if (!isChoosingDestination || destination == null || destination.data == null)
+            return;
+
+        if (isSelectingTransfer)
+            AddTransferTask(destination);
+        else
+            AddDepositTask(destination);
+    }
+
+    private void AddTransferTask(StorageContainerView destination)
+    {
+        if (artifactSelected == null)
+            return;
+
+        Artifact artifact = artifactSelected.GetComponent<ArtifactView>().data;
+
+        if (currentTask.ContainsArtifact(artifact.id))
+        {
+            Debug.LogWarning("Il reperto è già presente nel task.");
+            ReturnToArtifactList();
+            return;
+        }
+
+        int sourceId = artifact.GetShelfID();
+        if (sourceId == -1)
+        {
+            A_Menu.artifactText.GetComponent<TextMeshProUGUI>().text =
+                "Il reperto non risulta più depositato. Annullare la selezione.";
+            return;
+        }
+
+        if (destination.data.id == sourceId)
+        {
+            A_Menu.artifactText.GetComponent<TextMeshProUGUI>().text =
+                "La destinazione coincide con la collocazione attuale. " +
+                "Selezionare una destinazione diversa.";
+            return;
+        }
+
+        if (!spawnedShelves.TryGetValue(sourceId, out GameObject sourceObject)
+            || sourceObject == null)
+        {
+            Debug.LogWarning("Collocazione di origine non disponibile.");
+            return;
+        }
+
+        StorageContainerView source = sourceObject.GetComponent<StorageContainerView>();
+        if (source == null || source.data == null)
+            return;
+
+        string transferId = Guid.NewGuid().ToString();
+        TaskItem pick = CreateTaskItem(artifact, source, TaskOperation.Pick);
+        TaskItem deposit = CreateTaskItem(artifact, destination, TaskOperation.Deposit);
+        pick.TransferId = transferId;
+        deposit.TransferId = transferId;
+
+        // Aggiungiamo insieme le due fasi, dopo il controllo dei duplicati.
+        currentTask.Add(pick);
+        currentTask.Add(deposit);
+
+        Debug.Log($"Aggiunto TRANSFER: {artifact.name}, {source.name} -> {destination.name}");
+        artifactScrollViewToBeReset = true;
+        ReturnToArtifactList();
+    }
+
     public void AddPickTask()
     {
         Artifact artifact = artifactSelected.GetComponent<ArtifactView>().data;
@@ -2788,7 +2968,15 @@ public class AppManager : MonoBehaviour
 
         currentTask.Reset();
 
-        TaskOptimizer.Optimize(currentTask, containerHierarchyPaths, GetCurrentHierarchyIds());
+        try
+        {
+            TaskOptimizer.Optimize(currentTask, containerHierarchyPaths, GetCurrentHierarchyIds());
+        }
+        catch (InvalidOperationException exception)
+        {
+            Debug.LogError(exception.Message);
+            return;
+        }
 
         AddHubTaskIfNeeded();
 
@@ -2888,7 +3076,8 @@ public class AppManager : MonoBehaviour
 
         foreach (TaskItem item in currentTask.TaskItems)
         {
-            if (item.Operation == TaskOperation.Pick)
+            // Il prelievo di un transfer termina con un deposito nel magazzino.
+            if (item.Operation == TaskOperation.Pick && !item.IsTransfer)
             {
                 containsPick = true;
                 break;
@@ -2953,7 +3142,26 @@ public class AppManager : MonoBehaviour
     { return artifactSelected; }
 
     public void ResetArtifactSelected()
-        { artifactSelected = null; }
+    {
+        artifactSelected = null;
+
+        isChoosingDestination = false;
+        isSelectingTransfer = false;
+
+        A_Menu.depositList.SetActive(false);
+        A_Menu.selectShelfButton.SetActive(false);
+
+        if (vsrltDeposit == null)
+        {
+            vsrltDeposit = A_Menu.depositList
+                .GetComponentInChildren<VirtualizedScrollRectListTester>(true);
+        }
+
+        if (vsrltDeposit != null)
+        {
+            vsrltDeposit.SetForDeposit(false);
+        }
+    }
 
     public void StartDepositNavigation(GameObject shelf)
     {

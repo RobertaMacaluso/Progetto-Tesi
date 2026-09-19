@@ -1,4 +1,4 @@
-﻿// Copyright (c) Mixed Reality Toolkit Contributors
+// Copyright (c) Mixed Reality Toolkit Contributors
 // Licensed under the BSD 3-Clause
 
 // Disable "missing XML comment" warning for samples. While nice to have, this XML documentation is not required for samples.
@@ -283,12 +283,16 @@ namespace MixedReality.Toolkit.Examples.Demos
         {
             Debug.Log("Scelto scaffale per deposito");
 
-            //shelfForDeposit = currentShelfNavigated;
+            if (currentShelfNavigated == null)
+                return;
 
-            appManager.AddDepositTask(
-                currentShelfNavigated.GetComponent<StorageContainerView>());
+            StorageContainerView destination =
+                currentShelfNavigated.GetComponent<StorageContainerView>();
 
-            appManager.A_Menu.selectShelfButton.SetActive(false);
+            if (destination == null || destination.data == null)
+                return;
+
+            appManager.ConfirmDestinationSelection(destination);
         }
 
         public async void DepositInShelf()
@@ -412,47 +416,7 @@ namespace MixedReality.Toolkit.Examples.Demos
             return result;
         }
 
-        //private void FindLogicalLevelRecursive(Transform parent, int targetLevel, List<GameObject> result)
-        //{
-        //    for (int i = 0; i < parent.childCount; i++)
-        //    {
-        //        GameObject child = parent.GetChild(i).gameObject;
-
-        //        StorageContainerView view =
-        //            child.GetComponent<StorageContainerView>();
-
-        //        if (view == null || view.data == null)
-        //            continue;
-
-        //        int level = view.data.logicalHierarchyLevel;
-
-        //        if (level == targetLevel)
-        //        {
-        //            // Abbiamo trovato un elemento del livello richiesto.
-        //            result.Add(child);
-
-        //            // Non scendiamo nei suoi figli:
-        //            // appartengono ai livelli successivi.
-        //            continue;
-        //        }
-
-        //        if (level == -1)
-        //        {
-        //            // Elemento strutturale nascosto nella UI:
-        //            // lo attraversiamo per cercare il livello successivo.
-        //            FindLogicalLevelRecursive(
-        //                child.transform,
-        //                targetLevel,
-        //                result
-        //            );
-        //        }
-        //    }
-        //}
-
-        private void FindLogicalLevelRecursive(
-            Transform parent,
-            int targetLevel,
-            List<GameObject> result)
+        private void FindLogicalLevelRecursive(Transform parent, int targetLevel, List<GameObject> result)
         {
             for (int i = 0; i < parent.childCount; i++)
             {
@@ -466,8 +430,7 @@ namespace MixedReality.Toolkit.Examples.Demos
 
                 int level = view.data.logicalHierarchyLevel;
 
-                // Attraversiamo solo il livello cercato
-                // e gli elementi strutturali nascosti (-1).
+                // Attraversiamo solo il livello cercato e gli elementi nascosti (-1).
                 if (level != targetLevel && level != -1)
                     continue;
 
@@ -476,12 +439,8 @@ namespace MixedReality.Toolkit.Examples.Demos
                     result.Add(child);
                 }
 
-                // Continuiamo anche dopo aver trovato una corrispondenza.
-                FindLogicalLevelRecursive(
-                    child.transform,
-                    targetLevel,
-                    result
-                );
+                // Continuiamo anche nei figli degli elementi del livello cercato.
+                FindLogicalLevelRecursive(child.transform, targetLevel, result);
             }
         }
 
@@ -565,6 +524,9 @@ namespace MixedReality.Toolkit.Examples.Demos
 
         public void Back()
         {
+            if (!forDeposit)
+                return;
+
             // Siamo già nella schermata iniziale:
             // mostra le stanze. Un ulteriore Back chiude la gerarchia.
             if (currentShelfNavigated == null)
@@ -572,7 +534,7 @@ namespace MixedReality.Toolkit.Examples.Demos
                 Debug.Log("Back dal livello iniziale: chiusura lista.");
 
                 forDeposit = false;
-                appManager.BackButtonArtifact();
+                appManager.CancelDestinationSelection();
                 return;
             }
 

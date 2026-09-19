@@ -102,7 +102,7 @@ public class WarehouseTask
 
     public void RemoveArtifact(int artifactId)
     {
-        Items.RemoveAll(x => x.Artifact.id == artifactId);
+        Items.RemoveAll(x => x.Artifact != null && x.Artifact.id == artifactId);
 
         if (CurrentIndex >= Items.Count)
             CurrentIndex = Mathf.Max(0, Items.Count - 1);

@@ -77,6 +77,9 @@ public static class TaskOptimizer
 
             foreach (TaskItem candidate in remaining)
             {
+                if (!CanSchedule(candidate, ordered))
+                    continue;
+
                 int distance = Distance(current, candidate, hierarchyPaths);
 
                 if (distance < bestDistance)
@@ -84,6 +87,12 @@ public static class TaskOptimizer
                     bestDistance = distance;
                     best = candidate;
                 }
+            }
+
+            if (best == null)
+            {
+                throw new System.InvalidOperationException(
+                    "Impossibile ordinare i task: manca il prelievo di un transfer.");
             }
 
             ordered.Add(best);
@@ -101,6 +110,9 @@ public static class TaskOptimizer
 
         foreach (TaskItem candidate in remaining)
         {
+            if (!CanSchedule(candidate, null))
+                continue;
+
             int distance = HierarchyDistance.Distance(currentHierarchy, hierarchyPaths[candidate.ShelfView.data.id]);
 
             if (distance < bestDistance)
@@ -110,11 +122,37 @@ public static class TaskOptimizer
             }
         }
 
+        if (best == null)
+        {
+            throw new System.InvalidOperationException(
+                "Nessun task iniziale ammissibile: manca il prelievo di un transfer.");
+        }
+
         Debug.Log(
             $"Task iniziale scelto: {best.Artifact.name} " +
             $"(distanza {bestDistance})");
 
         return best;
+    }
+
+    private static bool CanSchedule(TaskItem candidate, IReadOnlyList<TaskItem> ordered)
+    {
+        if (!candidate.IsTransfer || candidate.Operation != TaskOperation.Deposit)
+            return true;
+
+        if (ordered == null)
+            return false;
+
+        foreach (TaskItem item in ordered)
+        {
+            if (item.Operation == TaskOperation.Pick
+                && item.TransferId == candidate.TransferId)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     private static int Distance(TaskItem a, TaskItem b, Dictionary<int, int[]> hierarchyPaths)
