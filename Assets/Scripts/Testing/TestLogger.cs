@@ -1,414 +1,7 @@
-//using System;
-//using System.Collections;
-//using System.IO;
-//using UnityEngine;
-//using System.Globalization;
-
-//public class TestLogger : MonoBehaviour
-//{
-//    public enum TestCondition
-//    {
-//        Traditional,
-//        HoloLens
-//    }
-
-//    [Header("Test Settings")]
-//    [SerializeField] private TestCondition condition = TestCondition.HoloLens;
-
-//    [SerializeField] private int currentTask = 0;
-
-//    [Header("Tracking")]
-//    [SerializeField] private Transform appManager;
-//    [SerializeField] private float trackingInterval = 0.1f;
-
-//    private string filePath;
-//    private StreamWriter writer;
-
-//    private Coroutine trackingCoroutine;
-//    private bool isTracking = false;
-
-//    public string ParticipantId { get; private set; }
-//    public string SessionId { get; private set; }
-//    public TestCondition Condition => condition;
-//    public int CurrentTask => currentTask;
-
-//    private const string PlayerPrefsKey = "LastParticipantId";
-
-//    private void Awake()
-//    {
-//        StartNewSession();
-
-//        if (appManager == null)
-//        {
-//            Debug.LogError(
-//                "[TestLogger] AppManager Transform is not assigned."
-//            );
-//        }
-
-//        if (trackingInterval <= 0f)
-//        {
-//            Debug.LogWarning(
-//                "[TestLogger] Tracking interval must be greater than 0. " +
-//                "Using 0.1 seconds."
-//            );
-
-//            trackingInterval = 0.1f;
-//        }
-//    }
-
-//    /// <summary>
-//    /// Creates a new test session and CSV file.
-//    /// Automatically assigns the next participant ID.
-//    /// </summary>
-//    public void StartNewSession()
-//    {
-//        // Get last participant ID
-//        int lastParticipantId = PlayerPrefs.GetInt(PlayerPrefsKey, 0);
-
-//        // Increment
-//        int newParticipantId = lastParticipantId + 1;
-
-//        // Save updated value
-//        PlayerPrefs.SetInt(PlayerPrefsKey, newParticipantId);
-//        PlayerPrefs.Save();
-
-//        ParticipantId = $"P{newParticipantId:D2}";
-
-//        // Create unique session ID
-//        SessionId =
-//            $"{ParticipantId}_{condition}_{DateTime.Now:yyyyMMdd_HHmmss}";
-
-//        // Create directory
-//        string directory = Path.Combine(
-//            Application.persistentDataPath,
-//            "TestLogs"
-//        );
-
-//        Directory.CreateDirectory(directory);
-
-//        // Create CSV path
-//        filePath = Path.Combine(
-//            directory,
-//            $"{SessionId}.csv"
-//        );
-
-//        // Create file
-//        writer = new StreamWriter(filePath, false);
-
-//        // CSV header
-//        writer.WriteLine(
-//            "Timestamp;ParticipantId;Condition;SessionId;Task;Event;ArtifactId;X;Y;Z;Value"
-//        );
-
-//        writer.Flush();
-
-//        Debug.Log($"[TestLogger] Session started: {SessionId}");
-//        Debug.Log($"[TestLogger] Participant: {ParticipantId}");
-//        Debug.Log($"[TestLogger] Condition: {condition}");
-//        Debug.Log($"[TestLogger] File: {filePath}");
-//    }
-
-//    /// <summary>
-//    /// Sets the task number manually.
-//    /// </summary>
-//    public void SetTask(int taskNumber)
-//    {
-//        currentTask = taskNumber;
-
-//        Debug.Log($"[TestLogger] Current task: {currentTask}");
-//    }
-
-//    /// <summary>
-//    /// Manually set the next participant ID.
-//    /// Example: SetParticipantId(17) means the next automatic ID will be P18.
-//    /// </summary>
-//    public void SetNextParticipantId(int participantId)
-//    {
-//        if (participantId < 0)
-//        {
-//            Debug.LogWarning(
-//                "[TestLogger] Participant ID cannot be negative."
-//            );
-
-//            return;
-//        }
-
-//        PlayerPrefs.SetInt(PlayerPrefsKey, participantId);
-//        PlayerPrefs.Save();
-
-//        Debug.Log(
-//            $"[TestLogger] Last participant ID set to {participantId}. " +
-//            $"Next session will be P{participantId + 1:D2}."
-//        );
-//    }
-
-//    /// <summary>
-//    /// Reset participant counter.
-//    /// Next session will be P01.
-//    /// </summary>
-//    public void ResetParticipantId()
-//    {
-//        PlayerPrefs.SetInt(PlayerPrefsKey, 0);
-//        PlayerPrefs.Save();
-
-//        Debug.Log(
-//            "[TestLogger] Participant counter reset. " +
-//            "Next session will be P01."
-//        );
-//    }
-
-//    /// <summary>
-//    /// Returns the current participant number.
-//    /// </summary>
-//    public int GetCurrentParticipantNumber()
-//    {
-//        return PlayerPrefs.GetInt(PlayerPrefsKey, 0);
-//    }
-
-//    /// <summary>
-//    /// Starts the next task.
-//    /// Called when the Player exits the start/end zone.
-//    /// </summary>
-//    public void StartNextTask()
-//    {
-//        // Safety check: don't start a new task if one is already active.
-//        if (isTracking)
-//        {
-//            Debug.LogWarning(
-//                "[TestLogger] A task is already active. " +
-//                "Ignoring StartNextTask()."
-//            );
-
-//            return;
-//        }
-
-//        currentTask++;
-
-//        Debug.Log(
-//            $"[TestLogger] Task {currentTask} started."
-//        );
-
-//        WriteEvent("TaskStarted");
-
-//        StartTracking();
-//    }
-
-//    /// <summary>
-//    /// Ends the current task.
-//    /// Called when the Player enters the start/end zone.
-//    /// </summary>
-//    public void EndCurrentTask()
-//    {
-//        if (currentTask == 0)
-//        {
-//            Debug.LogWarning(
-//                "[TestLogger] EndCurrentTask called before any task started."
-//            );
-
-//            return;
-//        }
-
-//        if (!isTracking)
-//        {
-//            Debug.LogWarning(
-//                $"[TestLogger] Task {currentTask} is not currently being tracked."
-//            );
-
-//            return;
-//        }
-
-//        // Save one final position before stopping
-//        LogCurrentPosition();
-
-//        StopTracking();
-
-//        WriteEvent("TaskCompleted");
-
-//        Debug.Log(
-//            $"[TestLogger] Task {currentTask} ended."
-//        );
-//    }
-
-//    /// <summary>
-//    /// Starts collecting the AppManager position.
-//    /// </summary>
-//    private void StartTracking()
-//    {
-//        if (appManager == null)
-//        {
-//            Debug.LogError(
-//                "[TestLogger] Cannot start tracking: AppManager is not assigned."
-//            );
-
-//            return;
-//        }
-
-//        if (trackingCoroutine != null)
-//        {
-//            StopCoroutine(trackingCoroutine);
-//        }
-
-//        isTracking = true;
-
-//        trackingCoroutine = StartCoroutine(TrackPosition());
-
-//        Debug.Log(
-//            $"[TestLogger] Position tracking started for Task {currentTask}."
-//        );
-//    }
-
-//    /// <summary>
-//    /// Stops collecting the AppManager position.
-//    /// </summary>
-//    private void StopTracking()
-//    {
-//        isTracking = false;
-
-//        if (trackingCoroutine != null)
-//        {
-//            StopCoroutine(trackingCoroutine);
-//            trackingCoroutine = null;
-//        }
-
-//        Debug.Log(
-//            $"[TestLogger] Position tracking stopped for Task {currentTask}."
-//        );
-//    }
-
-//    /// <summary>
-//    /// Coroutine that samples the AppManager position at fixed intervals.
-//    /// </summary>
-//    private IEnumerator TrackPosition()
-//    {
-//        while (isTracking)
-//        {
-//            LogCurrentPosition();
-
-//            yield return new WaitForSeconds(trackingInterval);
-//        }
-
-//        trackingCoroutine = null;
-//    }
-
-//    /// <summary>
-//    /// Logs the current AppManager position.
-//    /// </summary>
-//    private void LogCurrentPosition()
-//    {
-//        if (appManager == null)
-//        {
-//            return;
-//        }
-
-//        Vector3 position = appManager.position;
-
-//        WriteCsvLine(
-//            "Position",
-//            "",
-//            position.x,
-//            position.y,
-//            position.z,
-//            ""
-//        );
-//    }
-
-//    /// <summary>
-//    /// Writes a generic event to the CSV.
-//    /// </summary>
-//    private void WriteEvent(string eventName)
-//    {
-//        WriteCsvLine(
-//            eventName,
-//            "",
-//            null,
-//            null,
-//            null,
-//            ""
-//        );
-//    }
-
-//    /// <summary>
-//    /// Writes one complete CSV line.
-//    /// </summary>
-//    private void WriteCsvLine(
-//      string eventName,
-//      string artifactId,
-//      float? x,
-//      float? y,
-//      float? z,
-//      string value)
-//    {
-//        if (writer == null)
-//        {
-//            Debug.LogWarning(
-//                "[TestLogger] Cannot write to CSV: writer is null."
-//            );
-
-//            return;
-//        }
-
-//        string timestamp = DateTime.Now.ToString(
-//            "yyyy-MM-dd HH:mm:ss.fff"
-//        );
-
-//        string xValue = x.HasValue
-//            ? x.Value.ToString("F4", CultureInfo.InvariantCulture)
-//            : "";
-
-//        string yValue = y.HasValue
-//            ? y.Value.ToString("F4", CultureInfo.InvariantCulture)
-//            : "";
-
-//        string zValue = z.HasValue
-//            ? z.Value.ToString("F4", CultureInfo.InvariantCulture)
-//            : "";
-
-//        writer.WriteLine(
-//            $"{timestamp};" +
-//            $"{ParticipantId};" +
-//            $"{condition};" +
-//            $"{SessionId};" +
-//            $"{currentTask};" +
-//            $"{eventName};" +
-//            $"{artifactId};" +
-//            $"{xValue};" +
-//            $"{yValue};" +
-//            $"{zValue};" +
-//            $"{value}"
-//        );
-
-//        writer.Flush();
-//    }
-
-//    private void OnDestroy()
-//    {
-//        StopTracking();
-//        CloseLog();
-//    }
-
-//    /// <summary>
-//    /// Flushes and closes the CSV.
-//    /// </summary>
-//    public void CloseLog()
-//    {
-//        if (writer != null)
-//        {
-//            writer.Flush();
-//            writer.Close();
-//            writer.Dispose();
-//            writer = null;
-
-//            Debug.Log(
-//                $"[TestLogger] Log closed: {filePath}"
-//            );
-//        }
-//    }
-//}
-
 using System;
 using System.Collections;
-using System.IO;
 using System.Globalization;
+using System.IO;
 using UnityEngine;
 
 public class TestLogger : MonoBehaviour
@@ -419,60 +12,180 @@ public class TestLogger : MonoBehaviour
         HoloLens
     }
 
-    [Header("Test Settings")]
-    [SerializeField] private TestCondition condition = TestCondition.HoloLens;
+    [Header("Test settings")]
+    [SerializeField]
+    private TestCondition condition =
+        TestCondition.HoloLens;
 
-    [SerializeField] private int currentTask = 0;
+    [SerializeField]
+    private int currentTask = 0;
 
-    [Header("Tracking")]
-    [SerializeField] private Transform appManager;
-    [SerializeField] private float trackingInterval = 0.1f;
+    [Header("Participant")]
+    [SerializeField]
+    private bool assignParticipantAutomatically = true;
+
+    [SerializeField]
+    private string participantIdOverride = "P01";
+
+    [Header("Position tracking")]
+    [SerializeField]
+    private Transform appManager;
+
+    [SerializeField]
+    private float trackingInterval = 0.1f;
 
     private string filePath;
     private StreamWriter writer;
 
     private Coroutine trackingCoroutine;
-    private bool isTracking = false;
+    private bool isTaskActive;
 
     public string ParticipantId { get; private set; }
+
     public string SessionId { get; private set; }
+
     public TestCondition Condition => condition;
+
     public int CurrentTask => currentTask;
 
-    private const string PlayerPrefsKey = "LastParticipantId";
+    public bool IsTaskActive => isTaskActive;
 
+    public string FilePath => filePath;
+
+    private const string PlayerPrefsKey =
+        "LastParticipantId";
 
     private void Awake()
     {
-        StartNewSession();
-
-        if (appManager == null)
-        {
-            Debug.LogError(
-                "[TestLogger] AppManager Transform is not assigned."
-            );
-        }
-
         if (trackingInterval <= 0f)
         {
             Debug.LogWarning(
-                "[TestLogger] Tracking interval must be greater than 0. " +
-                "Using 0.1 seconds."
+                "[TestLogger] Tracking interval must be " +
+                "greater than zero. Using 0.1 seconds."
             );
 
             trackingInterval = 0.1f;
         }
+
+        if (appManager == null)
+        {
+            Debug.LogWarning(
+                "[TestLogger] The Transform used for position " +
+                "tracking has not been assigned."
+            );
+        }
+
+        StartNewSession();
     }
 
-
     /// <summary>
-    /// Creates a new test session and CSV file.
-    /// Automatically assigns the next participant ID.
+    /// Creates a new logging session.
     /// </summary>
     public void StartNewSession()
     {
+        CloseLog();
+
+        ParticipantId =
+            ResolveParticipantId();
+
+        SessionId =
+            $"{ParticipantId}_" +
+            $"{condition}_" +
+            $"{DateTime.Now:yyyyMMdd_HHmmss}";
+
+        string directory =
+            Path.Combine(
+                Application.persistentDataPath,
+                "TestLogs"
+            );
+
+        Directory.CreateDirectory(directory);
+
+        filePath =
+            Path.Combine(
+                directory,
+                $"{SessionId}.csv"
+            );
+
+        FileStream fileStream =
+            new FileStream(
+                filePath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.Read
+            );
+
+        writer =
+            new StreamWriter(fileStream)
+            {
+                AutoFlush = true
+            };
+
+        writer.WriteLine(
+            "Timestamp;" +
+            "ParticipantId;" +
+            "Condition;" +
+            "SessionId;" +
+            "Task;" +
+            "Event;" +
+            "Operation;" +
+            "ArtifactId;" +
+            "ExpectedTargetId;" +
+            "ActualTargetId;" +
+            "X;" +
+            "Y;" +
+            "Z;" +
+            "FirstManipulationStart;" +
+            "LastManipulationEnd;" +
+            "Correct"
+        );
+
+        Debug.Log(
+            $"[TestLogger] Session started: {SessionId}"
+        );
+
+        Debug.Log(
+            $"[TestLogger] Log file: {filePath}"
+        );
+    }
+
+    private string ResolveParticipantId()
+    {
+        if (!assignParticipantAutomatically)
+        {
+            string manualId =
+                participantIdOverride != null
+                    ? participantIdOverride.Trim()
+                    : "";
+
+            if (string.IsNullOrEmpty(manualId))
+            {
+                Debug.LogWarning(
+                    "[TestLogger] Manual participant ID is empty. " +
+                    "Using P00."
+                );
+
+                return "P00";
+            }
+
+            /*
+             * Permette di inserire sia "3" sia "P03".
+             */
+            if (int.TryParse(
+                manualId,
+                out int numericId))
+            {
+                return $"P{numericId:D2}";
+            }
+
+            return manualId;
+        }
+
         int lastParticipantId =
-            PlayerPrefs.GetInt(PlayerPrefsKey, 0);
+            PlayerPrefs.GetInt(
+                PlayerPrefsKey,
+                0
+            );
 
         int newParticipantId =
             lastParticipantId + 1;
@@ -484,84 +197,39 @@ public class TestLogger : MonoBehaviour
 
         PlayerPrefs.Save();
 
-        ParticipantId =
-            $"P{newParticipantId:D2}";
-
-        SessionId =
-            $"{ParticipantId}_{condition}_{DateTime.Now:yyyyMMdd_HHmmss}";
-
-        string directory = Path.Combine(
-            Application.persistentDataPath,
-            "TestLogs"
-        );
-
-        Directory.CreateDirectory(directory);
-
-        filePath = Path.Combine(
-            directory,
-            $"{SessionId}.csv"
-        );
-
-        writer = new StreamWriter(
-            filePath,
-            false
-        );
-
-        // CSV header
-        writer.WriteLine(
-            "Timestamp;" +
-            "Task;" +
-            "Event;" +
-            "ArtifactId;" +
-            "X;" +
-            "Y;" +
-            "Z;" +
-            "FirstManipulationStart;" +
-            "LastManipulationEnd;" +
-            "PlacementDistance;" +
-            "PlacementCorrect"
-        );
-
-        writer.Flush();
-
-        Debug.Log(
-            $"[TestLogger] Session started: {SessionId}"
-        );
-
-        Debug.Log(
-            $"[TestLogger] Participant: {ParticipantId}"
-        );
-
-        Debug.Log(
-            $"[TestLogger] Condition: {condition}"
-        );
-
-        Debug.Log(
-            $"[TestLogger] File: {filePath}"
-        );
+        return $"P{newParticipantId:D2}";
     }
 
-
     /// <summary>
-    /// Sets the task number manually.
+    /// Sets the current task number.
+    /// StartNextTask increments this value by one.
     /// </summary>
     public void SetTask(int taskNumber)
     {
-        currentTask = taskNumber;
+        if (isTaskActive)
+        {
+            Debug.LogWarning(
+                "[TestLogger] Cannot change the task number " +
+                "while a task is active."
+            );
+
+            return;
+        }
+
+        currentTask =
+            Mathf.Max(0, taskNumber);
 
         Debug.Log(
-            $"[TestLogger] Current task: {currentTask}"
+            $"[TestLogger] Current task set to {currentTask}."
         );
     }
 
-
     /// <summary>
-    /// Manually set the next participant ID.
-    /// Example:
-    /// SetNextParticipantId(17)
-    /// means the next automatic ID will be P18.
+    /// Sets the value used by the automatic participant counter.
+    /// For example, passing 17 makes the next automatic ID P18.
     /// </summary>
-    public void SetNextParticipantId(int participantId)
+    public void SetNextParticipantId(
+        int participantId)
     {
         if (participantId < 0)
         {
@@ -581,16 +249,11 @@ public class TestLogger : MonoBehaviour
 
         Debug.Log(
             $"[TestLogger] Last participant ID set to " +
-            $"{participantId}. " +
-            $"Next session will be P{participantId + 1:D2}."
+            $"{participantId}. Next automatic ID: " +
+            $"P{participantId + 1:D2}."
         );
     }
 
-
-    /// <summary>
-    /// Reset participant counter.
-    /// Next session will be P01.
-    /// </summary>
     public void ResetParticipantId()
     {
         PlayerPrefs.SetInt(
@@ -602,14 +265,10 @@ public class TestLogger : MonoBehaviour
 
         Debug.Log(
             "[TestLogger] Participant counter reset. " +
-            "Next session will be P01."
+            "Next automatic ID: P01."
         );
     }
 
-
-    /// <summary>
-    /// Returns the current participant number.
-    /// </summary>
     public int GetCurrentParticipantNumber()
     {
         return PlayerPrefs.GetInt(
@@ -618,40 +277,36 @@ public class TestLogger : MonoBehaviour
         );
     }
 
-
     /// <summary>
-    /// Starts the next task.
-    /// Called when the Player exits the start/end zone.
+    /// Starts a task when the participant exits the hub.
     /// </summary>
     public void StartNextTask()
     {
-        if (isTracking)
+        if (isTaskActive)
         {
             Debug.LogWarning(
                 "[TestLogger] A task is already active. " +
-                "Ignoring StartNextTask()."
+                "StartNextTask ignored."
             );
 
             return;
         }
 
         currentTask++;
+        isTaskActive = true;
+
+        WriteEvent("TaskStarted");
+
+        LogCurrentPosition();
+        StartPositionTracking();
 
         Debug.Log(
             $"[TestLogger] Task {currentTask} started."
         );
-
-        WriteEvent(
-            "TaskStarted"
-        );
-
-        StartTracking();
     }
 
-
     /// <summary>
-    /// Ends the current task.
-    /// Called when the Player enters the start/end zone.
+    /// Ends the task when the participant enters the hub.
     /// </summary>
     public void EndCurrentTask()
     {
@@ -659,46 +314,40 @@ public class TestLogger : MonoBehaviour
         {
             Debug.LogWarning(
                 "[TestLogger] EndCurrentTask called before " +
-                "any task started."
+                "the first task was started."
             );
 
             return;
         }
 
-        if (!isTracking)
+        if (!isTaskActive)
         {
             Debug.LogWarning(
-                $"[TestLogger] Task {currentTask} is not " +
-                "currently being tracked."
+                $"[TestLogger] Task {currentTask} is not active."
             );
 
             return;
         }
 
         LogCurrentPosition();
+        StopPositionTracking();
 
-        StopTracking();
+        WriteEvent("TaskCompleted");
 
-        WriteEvent(
-            "TaskCompleted"
-        );
+        isTaskActive = false;
 
         Debug.Log(
-            $"[TestLogger] Task {currentTask} ended."
+            $"[TestLogger] Task {currentTask} completed."
         );
     }
 
-
-    /// <summary>
-    /// Starts collecting the AppManager position.
-    /// </summary>
-    private void StartTracking()
+    private void StartPositionTracking()
     {
         if (appManager == null)
         {
-            Debug.LogError(
-                "[TestLogger] Cannot start tracking: " +
-                "AppManager is not assigned."
+            Debug.LogWarning(
+                "[TestLogger] Position tracking was not started " +
+                "because the tracked Transform is missing."
             );
 
             return;
@@ -706,287 +355,405 @@ public class TestLogger : MonoBehaviour
 
         if (trackingCoroutine != null)
         {
-            StopCoroutine(
-                trackingCoroutine
-            );
+            StopCoroutine(trackingCoroutine);
         }
-
-        isTracking = true;
 
         trackingCoroutine =
             StartCoroutine(
                 TrackPosition()
             );
-
-        Debug.Log(
-            $"[TestLogger] Position tracking started " +
-            $"for Task {currentTask}."
-        );
     }
 
-
-    /// <summary>
-    /// Stops collecting the AppManager position.
-    /// </summary>
-    private void StopTracking()
+    private void StopPositionTracking()
     {
-        isTracking = false;
-
-        if (trackingCoroutine != null)
+        if (trackingCoroutine == null)
         {
-            StopCoroutine(
-                trackingCoroutine
-            );
-
-            trackingCoroutine = null;
+            return;
         }
 
-        Debug.Log(
-            $"[TestLogger] Position tracking stopped " +
-            $"for Task {currentTask}."
-        );
+        StopCoroutine(trackingCoroutine);
+        trackingCoroutine = null;
     }
 
-
-    /// <summary>
-    /// Coroutine that samples the AppManager position.
-    /// </summary>
     private IEnumerator TrackPosition()
     {
-        while (isTracking)
-        {
-            LogCurrentPosition();
-
-            yield return new WaitForSeconds(
+        WaitForSeconds wait =
+            new WaitForSeconds(
                 trackingInterval
             );
+
+        while (isTaskActive)
+        {
+            LogCurrentPosition();
+            yield return wait;
         }
 
         trackingCoroutine = null;
     }
 
-
-    /// <summary>
-    /// Logs the current AppManager position.
-    /// </summary>
     private void LogCurrentPosition()
     {
-        if (appManager == null)
+        if (appManager == null ||
+            !isTaskActive)
+        {
             return;
+        }
 
         Vector3 position =
             appManager.position;
 
         WriteCsvLine(
-            "Position",
-            "",
-            position.x,
-            position.y,
-            position.z,
-            null,
-            null,
-            null,
-            null
+            eventName: "Position",
+            operation: "",
+            artifactId: "",
+            expectedTargetId: "",
+            actualTargetId: "",
+            x: position.x,
+            y: position.y,
+            z: position.z,
+            firstManipulationStart: null,
+            lastManipulationEnd: null,
+            correct: null
         );
     }
 
-
-    /// <summary>
-    /// Logs a generic event.
-    /// </summary>
-    private void WriteEvent(string eventName)
+    private void WriteEvent(
+        string eventName)
     {
         WriteCsvLine(
-            eventName,
-            "",
-            null,
-            null,
-            null,
-            null,
-            null,
-            null,
-            null
+            eventName: eventName,
+            operation: "",
+            artifactId: "",
+            expectedTargetId: "",
+            actualTargetId: "",
+            x: null,
+            y: null,
+            z: null,
+            firstManipulationStart: null,
+            lastManipulationEnd: null,
+            correct: null
         );
     }
 
-
     /// <summary>
-    /// Logs a completed Picking operation.
-    /// Only manipulation timestamps are recorded.
+    /// Records the completion of a picking operation.
     /// </summary>
     public void LogArtifactPicked(
         string artifactId,
         DateTime firstManipulationStart,
         DateTime lastManipulationEnd)
     {
+        if (!CanLogArtifactEvent())
+        {
+            return;
+        }
+
         WriteCsvLine(
-            "ArtifactPicked",
-            artifactId,
-            null,
-            null,
-            null,
-            firstManipulationStart,
-            lastManipulationEnd,
-            null,
-            null
+            eventName: "ArtifactPicked",
+            operation: "Picking",
+            artifactId: artifactId,
+            expectedTargetId: "Cart",
+            actualTargetId: "Cart",
+            x: null,
+            y: null,
+            z: null,
+            firstManipulationStart:
+                firstManipulationStart,
+            lastManipulationEnd:
+                lastManipulationEnd,
+            correct: true
         );
 
         Debug.Log(
-            $"[TestLogger] Artifact picked: {artifactId}"
+            $"[TestLogger] Picking completed: {artifactId}."
         );
     }
 
+    /// <summary>
+    /// Records a correct artifact loaded into the cart before
+    /// put-away, return or transfer.
+    /// </summary>
+    public void LogArtifactLoaded(
+        string operation,
+        string artifactId,
+        DateTime firstManipulationStart,
+        DateTime lastManipulationEnd)
+    {
+        if (!CanLogArtifactEvent())
+        {
+            return;
+        }
+
+        WriteCsvLine(
+            eventName: "ArtifactLoaded",
+            operation: operation,
+            artifactId: artifactId,
+            expectedTargetId: "Cart",
+            actualTargetId: "Cart",
+            x: null,
+            y: null,
+            z: null,
+            firstManipulationStart:
+                firstManipulationStart,
+            lastManipulationEnd:
+                lastManipulationEnd,
+            correct: true
+        );
+
+        Debug.Log(
+            $"[TestLogger] Artifact {artifactId} loaded " +
+            $"for {operation}."
+        );
+    }
 
     /// <summary>
-    /// Logs a completed Putaway operation.
-    /// Records final position, manipulation timestamps,
-    /// placement distance and correctness.
+    /// Records a distractor or other incorrect artifact
+    /// released inside the cart.
     /// </summary>
-    public void LogArtifactPutaway(
+    public void LogWrongArtifactInCart(
         string artifactId,
+        DateTime firstManipulationStart,
+        DateTime lastManipulationEnd)
+    {
+        if (!CanLogArtifactEvent())
+        {
+            return;
+        }
+
+        WriteCsvLine(
+            eventName: "WrongArtifactInCart",
+            operation: "None",
+            artifactId: artifactId,
+            expectedTargetId: "",
+            actualTargetId: "Cart",
+            x: null,
+            y: null,
+            z: null,
+            firstManipulationStart:
+                firstManipulationStart,
+            lastManipulationEnd:
+                lastManipulationEnd,
+            correct: false
+        );
+
+        Debug.LogWarning(
+            $"[TestLogger] Wrong artifact placed in cart: " +
+            $"{artifactId}."
+        );
+    }
+
+    /// <summary>
+    /// Records a placement attempt for put-away,
+    /// return or transfer.
+    /// </summary>
+    public void LogPlacementAttempt(
+        string operation,
+        string artifactId,
+        string expectedTargetId,
+        string actualTargetId,
         Vector3 actualPosition,
         DateTime firstManipulationStart,
         DateTime lastManipulationEnd,
-        float placementDistance,
-        bool placementCorrect)
+        bool correct)
     {
+        if (!CanLogArtifactEvent())
+        {
+            return;
+        }
+
         WriteCsvLine(
-            "ArtifactPutaway",
-            artifactId,
-            actualPosition.x,
-            actualPosition.y,
-            actualPosition.z,
-            firstManipulationStart,
-            lastManipulationEnd,
-            placementDistance,
-            placementCorrect
+            eventName: "PlacementAttempt",
+            operation: operation,
+            artifactId: artifactId,
+            expectedTargetId: expectedTargetId,
+            actualTargetId: actualTargetId,
+            x: actualPosition.x,
+            y: actualPosition.y,
+            z: actualPosition.z,
+            firstManipulationStart:
+                firstManipulationStart,
+            lastManipulationEnd:
+                lastManipulationEnd,
+            correct: correct
         );
 
         Debug.Log(
-            $"[TestLogger] Artifact putaway: {artifactId} | " +
-            $"Distance = {placementDistance:F4} m | " +
-            $"Correct = {placementCorrect}"
+            $"[TestLogger] Placement attempt: " +
+            $"operation = {operation}, " +
+            $"artifact = {artifactId}, " +
+            $"expected = {expectedTargetId}, " +
+            $"actual = {actualTargetId}, " +
+            $"correct = {correct}."
         );
     }
 
+    private bool CanLogArtifactEvent()
+    {
+        if (writer == null)
+        {
+            Debug.LogWarning(
+                "[TestLogger] Cannot record the event: " +
+                "the log file is not open."
+            );
 
-    /// <summary>
-    /// Writes one complete CSV line.
-    /// </summary>
+            return false;
+        }
+
+        if (!isTaskActive)
+        {
+            Debug.Log(
+                "[TestLogger] Artifact event ignored because " +
+                "no experimental task is active."
+            );
+
+            return false;
+        }
+
+        return true;
+    }
+
     private void WriteCsvLine(
         string eventName,
+        string operation,
         string artifactId,
+        string expectedTargetId,
+        string actualTargetId,
         float? x,
         float? y,
         float? z,
         DateTime? firstManipulationStart,
         DateTime? lastManipulationEnd,
-        float? placementDistance,
-        bool? placementCorrect)
+        bool? correct)
     {
         if (writer == null)
         {
             Debug.LogWarning(
-                "[TestLogger] Cannot write to CSV: " +
-                "writer is null."
+                "[TestLogger] Cannot write to CSV: writer is null."
             );
 
             return;
         }
 
         string timestamp =
-            DateTime.Now.ToString(
-                "yyyy-MM-dd HH:mm:ss.fff"
+            FormatTimestamp(
+                DateTime.Now
             );
 
-        string xValue = x.HasValue
-            ? x.Value.ToString(
-                "F4",
-                CultureInfo.InvariantCulture
-            )
-            : "";
+        string xValue =
+            FormatFloat(x);
 
-        string yValue = y.HasValue
-            ? y.Value.ToString(
-                "F4",
-                CultureInfo.InvariantCulture
-            )
-            : "";
+        string yValue =
+            FormatFloat(y);
 
-        string zValue = z.HasValue
-            ? z.Value.ToString(
-                "F4",
-                CultureInfo.InvariantCulture
-            )
-            : "";
+        string zValue =
+            FormatFloat(z);
 
         string firstStartValue =
             firstManipulationStart.HasValue
-                ? firstManipulationStart.Value.ToString(
-                    "yyyy-MM-dd HH:mm:ss.fff"
+                ? FormatTimestamp(
+                    firstManipulationStart.Value
                 )
                 : "";
 
         string lastEndValue =
             lastManipulationEnd.HasValue
-                ? lastManipulationEnd.Value.ToString(
-                    "yyyy-MM-dd HH:mm:ss.fff"
-                )
-                : "";
-
-        string distanceValue =
-            placementDistance.HasValue
-                ? placementDistance.Value.ToString(
-                    "F4",
-                    CultureInfo.InvariantCulture
+                ? FormatTimestamp(
+                    lastManipulationEnd.Value
                 )
                 : "";
 
         string correctValue =
-            placementCorrect.HasValue
-                ? placementCorrect.Value.ToString()
+            correct.HasValue
+                ? correct.Value
+                    ? "true"
+                    : "false"
                 : "";
 
         writer.WriteLine(
-            $"{timestamp};" +
+            $"{EscapeCsv(timestamp)};" +
+            $"{EscapeCsv(ParticipantId)};" +
+            $"{EscapeCsv(condition.ToString())};" +
+            $"{EscapeCsv(SessionId)};" +
             $"{currentTask};" +
-            $"{eventName};" +
-            $"{artifactId};" +
+            $"{EscapeCsv(eventName)};" +
+            $"{EscapeCsv(operation)};" +
+            $"{EscapeCsv(artifactId)};" +
+            $"{EscapeCsv(expectedTargetId)};" +
+            $"{EscapeCsv(actualTargetId)};" +
             $"{xValue};" +
             $"{yValue};" +
             $"{zValue};" +
-            $"{firstStartValue};" +
-            $"{lastEndValue};" +
-            $"{distanceValue};" +
+            $"{EscapeCsv(firstStartValue)};" +
+            $"{EscapeCsv(lastEndValue)};" +
             $"{correctValue}"
         );
-
-        writer.Flush();
     }
 
+    private static string FormatTimestamp(
+        DateTime value)
+    {
+        return value.ToString(
+            "yyyy-MM-dd HH:mm:ss.fff",
+            CultureInfo.InvariantCulture
+        );
+    }
+
+    private static string FormatFloat(
+        float? value)
+    {
+        return value.HasValue
+            ? value.Value.ToString(
+                "F4",
+                CultureInfo.InvariantCulture
+            )
+            : "";
+    }
+
+    private static string EscapeCsv(
+        string value)
+    {
+        if (string.IsNullOrEmpty(value))
+        {
+            return "";
+        }
+
+        bool requiresQuotes =
+            value.Contains(";") ||
+            value.Contains("\"") ||
+            value.Contains("\n") ||
+            value.Contains("\r");
+
+        if (!requiresQuotes)
+        {
+            return value;
+        }
+
+        return "\"" +
+               value.Replace("\"", "\"\"") +
+               "\"";
+    }
 
     private void OnDestroy()
     {
-        StopTracking();
+        isTaskActive = false;
+        StopPositionTracking();
         CloseLog();
     }
 
-
-    /// <summary>
-    /// Flushes and closes the CSV.
-    /// </summary>
     public void CloseLog()
     {
-        if (writer != null)
+        if (writer == null)
         {
-            writer.Flush();
-            writer.Close();
-            writer.Dispose();
-            writer = null;
-
-            Debug.Log(
-                $"[TestLogger] Log closed: {filePath}"
-            );
+            return;
         }
+
+        writer.Flush();
+        writer.Close();
+        writer.Dispose();
+        writer = null;
+
+        Debug.Log(
+            $"[TestLogger] Log closed: {filePath}"
+        );
     }
 }

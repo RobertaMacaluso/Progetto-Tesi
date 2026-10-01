@@ -3,16 +3,29 @@ using UnityEngine;
 
 public class VirtualCart : MonoBehaviour
 {
-    [Header("Contents")]
-    [SerializeField] private List<VirtualArtifact> artifacts = new();
+    [Header("Runtime contents")]
+    [SerializeField]
+    private List<VirtualArtifact> artifacts = new();
 
-    // Artifacts currently inside the cart trigger.
-    private readonly HashSet<VirtualArtifact>
-        artifactsInsideTrigger = new();
+    /*
+     * Usiamo un contatore invece di un semplice HashSet perché
+     * uno stesso reperto può possedere più collider.
+     */
+    private readonly Dictionary<VirtualArtifact, int>
+        artifactTriggerCounts = new();
 
     public IReadOnlyList<VirtualArtifact> Artifacts =>
         artifacts;
 
+    private void Awake()
+    {
+        /*
+         * Il carrello deve iniziare vuoto.
+         * I reperti vengono aggiunti durante l'esecuzione.
+         */
+        artifacts.Clear();
+        artifactTriggerCounts.Clear();
+    }
 
     private void OnTriggerEnter(Collider other)
     {
@@ -20,16 +33,24 @@ public class VirtualCart : MonoBehaviour
             other.GetComponentInParent<VirtualArtifact>();
 
         if (artifact == null)
+        {
             return;
+        }
 
-        artifactsInsideTrigger.Add(artifact);
+        artifactTriggerCounts.TryGetValue(
+            artifact,
+            out int currentCount
+        );
+
+        artifactTriggerCounts[artifact] =
+            currentCount + 1;
 
         Debug.Log(
             $"[VirtualCart] Artifact {artifact.ArtifactId} " +
-            "entered cart trigger."
+            $"entered cart trigger. Colliders inside: " +
+            $"{artifactTriggerCounts[artifact]}."
         );
     }
-
 
     private void OnTriggerExit(Collider other)
     {
@@ -37,73 +58,143 @@ public class VirtualCart : MonoBehaviour
             other.GetComponentInParent<VirtualArtifact>();
 
         if (artifact == null)
+        {
             return;
+        }
 
-        artifactsInsideTrigger.Remove(artifact);
+        if (!artifactTriggerCounts.TryGetValue(
+                artifact,
+                out int currentCount))
+        {
+            return;
+        }
 
-        Debug.Log(
-            $"[VirtualCart] Artifact {artifact.ArtifactId} " +
-            "exited cart trigger."
-        );
+        currentCount--;
+
+        if (currentCount <= 0)
+        {
+            artifactTriggerCounts.Remove(artifact);
+
+            Debug.Log(
+                $"[VirtualCart] Artifact {artifact.ArtifactId} " +
+                "completely exited cart trigger."
+            );
+        }
+        else
+        {
+            artifactTriggerCounts[artifact] =
+                currentCount;
+
+            Debug.Log(
+                $"[VirtualCart] Artifact {artifact.ArtifactId} " +
+                $"partially exited cart trigger. " +
+                $"Colliders still inside: {currentCount}."
+            );
+        }
     }
-
 
     public bool IsArtifactInsideTrigger(
         VirtualArtifact artifact)
     {
-        return artifact != null &&
-               artifactsInsideTrigger.Contains(artifact);
+        if (artifact == null)
+        {
+            return false;
+        }
+
+        return artifactTriggerCounts.TryGetValue(
+                   artifact,
+                   out int count) &&
+               count > 0;
     }
 
-
-    /// <summary>
-    /// Adds the artifact to the cart after manipulation ends.
-    /// </summary>
-    public void AddArtifact(VirtualArtifact artifact)
+    public void AddArtifact(
+        VirtualArtifact artifact)
     {
         if (artifact == null)
+        {
             return;
-
-        if (artifacts.Contains(artifact))
-            return;
+        }
 
         if (artifact.CurrentCart != null &&
             artifact.CurrentCart != this)
         {
-            artifact.CurrentCart.RemoveArtifact(artifact);
+            artifact.CurrentCart.RemoveArtifact(
+                artifact
+            );
         }
 
-        artifacts.Add(artifact);
+        if (!artifacts.Contains(artifact))
+        {
+            artifacts.Add(artifact);
+        }
 
-        // IMPORTANT:
-        // No SetParent here.
-        // The ParentConstraint handles the attachment.
         artifact.AttachToCart(this);
 
         Debug.Log(
             $"[VirtualCart] Artifact {artifact.ArtifactId} " +
-            "added to cart."
+            $"added to cart. Total: {artifacts.Count}."
         );
     }
 
-
-    public void RemoveArtifact(VirtualArtifact artifact)
+    public void RemoveArtifact(
+        VirtualArtifact artifact)
     {
         if (artifact == null)
+        {
             return;
+        }
 
         artifacts.Remove(artifact);
 
+        /*
+         * Non rimuoviamo qui artifactTriggerCounts:
+         * quando viene preso, il reperto può essere ancora
+         * fisicamente dentro il volume del carrello.
+         * Il contatore verrà aggiornato da OnTriggerExit.
+         */
+
         Debug.Log(
             $"[VirtualCart] Artifact {artifact.ArtifactId} " +
-            "removed from cart."
+            $"removed from cart. Total: {artifacts.Count}."
         );
     }
-
 
     public bool ContainsArtifact(
         VirtualArtifact artifact)
     {
-        return artifacts.Contains(artifact);
+        return artifact != null &&
+               artifacts.Contains(artifact);
+    }
+
+    /// <summary>
+    /// Detaches all artifacts and clears the cart state.
+    /// This will be used when resetting the experimental scene.
+    /// </summary>
+    public void ClearCart()
+    {
+        VirtualArtifact[] currentArtifacts =
+            artifacts.ToArray();
+
+        foreach (VirtualArtifact artifact
+                 in currentArtifacts)
+        {
+            if (artifact != null &&
+                artifact.CurrentCart == this)
+            {
+                artifact.DetachFromCart();
+            }
+        }
+
+        artifacts.Clear();
+        artifactTriggerCounts.Clear();
+
+        Debug.Log(
+            "[VirtualCart] Cart cleared."
+        );
+    }
+
+    private void OnDisable()
+    {
+        artifactTriggerCounts.Clear();
     }
 }
