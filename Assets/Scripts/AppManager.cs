@@ -147,7 +147,10 @@ public class AppManager : MonoBehaviour
 
     //Artifacts
     [SerializeField] public ArtifactsStruct A_Menu;
-    
+
+    [Header("Experimental logging")]
+    [SerializeField] private TestLogger testLogger;
+
 
     // Start is called before the first frame update
     async void Start()
@@ -2700,20 +2703,47 @@ public class AppManager : MonoBehaviour
         NextStep();
     }
 
-    private TaskItem CreateTaskItem(Artifact artifact, StorageContainerView shelfView, TaskOperation operation)
+    private TaskItem CreateTaskItem(Artifact artifact, StorageContainerView shelfView, TaskOperation operation, ExperimentalOperation experimentOperation = ExperimentalOperation.None)
     {
-        //StorageContainerView shelfView = null;
+        if (experimentOperation == ExperimentalOperation.None)
+        {
+            if (operation == TaskOperation.Pick)
+            {
+                experimentOperation = ExperimentalOperation.Picking;
+            }
+            else if (operation == TaskOperation.Deposit)
+            {
+                experimentOperation = ExperimentalOperation.Putaway;
+            }
+        }
 
-        //if (artifact.GetShelfID() != -1)
-        //    shelfView = spawnedShelves[artifact.GetShelfID()].GetComponent<StorageContainerView>();
+        int sourceId = artifact != null
+            ? artifact.GetShelfID()
+            : -1;
+
+        int destinationId = -1;
+
+        if (shelfView != null && shelfView.data != null)
+        {
+            if (operation == TaskOperation.Pick)
+            {
+                sourceId = shelfView.data.id;
+            }
+            else if (operation == TaskOperation.Deposit)
+            {
+                destinationId = shelfView.data.id;
+            }
+        }
 
         return new TaskItem
         {
             Artifact = artifact,
             ShelfView = shelfView,
-            //Shelf = shelfView != null ? shelfView.data : null,
             Operation = operation,
-            Completed = false
+            ExperimentOperation = experimentOperation,
+            Completed = false,
+            SourceContainerId = sourceId,
+            DestinationContainerId = destinationId
         };
     }
 
@@ -2801,7 +2831,8 @@ public class AppManager : MonoBehaviour
         if (artifactSelected == null)
             return;
 
-        Artifact artifact = artifactSelected.GetComponent<ArtifactView>().data;
+        Artifact artifact =
+            artifactSelected.GetComponent<ArtifactView>().data;
 
         if (currentTask.ContainsArtifact(artifact.id))
         {
@@ -2811,10 +2842,12 @@ public class AppManager : MonoBehaviour
         }
 
         int sourceId = artifact.GetShelfID();
+
         if (sourceId == -1)
         {
             A_Menu.artifactText.GetComponent<TextMeshProUGUI>().text =
-                "Il reperto non risulta più depositato. Annullare la selezione.";
+                "Il reperto non risulta più depositato. " +
+                "Annullare la selezione.";
             return;
         }
 
@@ -2826,28 +2859,52 @@ public class AppManager : MonoBehaviour
             return;
         }
 
-        if (!spawnedShelves.TryGetValue(sourceId, out GameObject sourceObject)
+        if (!spawnedShelves.TryGetValue(
+                sourceId, out GameObject sourceObject)
             || sourceObject == null)
         {
             Debug.LogWarning("Collocazione di origine non disponibile.");
             return;
         }
 
-        StorageContainerView source = sourceObject.GetComponent<StorageContainerView>();
+        StorageContainerView source =
+            sourceObject.GetComponent<StorageContainerView>();
+
         if (source == null || source.data == null)
             return;
 
         string transferId = Guid.NewGuid().ToString();
-        TaskItem pick = CreateTaskItem(artifact, source, TaskOperation.Pick);
-        TaskItem deposit = CreateTaskItem(artifact, destination, TaskOperation.Deposit);
+
+        TaskItem pick = CreateTaskItem(
+            artifact,
+            source,
+            TaskOperation.Pick,
+            ExperimentalOperation.Transfer);
+
+        TaskItem deposit = CreateTaskItem(
+            artifact,
+            destination,
+            TaskOperation.Deposit,
+            ExperimentalOperation.Transfer);
+
         pick.TransferId = transferId;
         deposit.TransferId = transferId;
 
-        // Aggiungiamo insieme le due fasi, dopo il controllo dei duplicati.
+        // Entrambe le fasi conservano origine e destinazione
+        // dell'intero trasferimento.
+        pick.SourceContainerId = sourceId;
+        pick.DestinationContainerId = destination.data.id;
+
+        deposit.SourceContainerId = sourceId;
+        deposit.DestinationContainerId = destination.data.id;
+
         currentTask.Add(pick);
         currentTask.Add(deposit);
 
-        Debug.Log($"Aggiunto TRANSFER: {artifact.name}, {source.name} -> {destination.name}");
+        Debug.Log(
+            $"Aggiunto TRANSFER: {artifact.name}, " +
+            $"{source.name} -> {destination.name}");
+
         artifactScrollViewToBeReset = true;
         ReturnToArtifactList();
     }
@@ -2883,7 +2940,8 @@ public class AppManager : MonoBehaviour
 
     public void AddDepositInLastShelfTask()
     {
-        Artifact artifact = artifactSelected.GetComponent<ArtifactView>().data;
+        Artifact artifact =
+            artifactSelected.GetComponent<ArtifactView>().data;
 
         if (currentTask.ContainsArtifact(artifact.id))
         {
@@ -2899,19 +2957,21 @@ public class AppManager : MonoBehaviour
         }
 
         StorageContainerView shelfView =
-            spawnedShelves[artifact.lastShelvingUnit].GetComponent<StorageContainerView>();
+            spawnedShelves[artifact.lastShelvingUnit]
+                .GetComponent<StorageContainerView>();
 
         currentTask.Add(
             CreateTaskItem(
                 artifact,
                 shelfView,
-                TaskOperation.Deposit));
+                TaskOperation.Deposit,
+                ExperimentalOperation.Return));
 
-        Debug.Log($"Aggiunto DEPOSITO: {artifact.name} -> {shelfView.data.name}");
-        Debug.Log($"Task count = {currentTask.Count}");
+        Debug.Log(
+            $"Aggiunta RESTITUZIONE: " +
+            $"{artifact.name} -> {shelfView.data.name}");
 
         artifactScrollViewToBeReset = true;
-        //CreateArtifactScrollView();
         ReturnToArtifactList();
     }
 
@@ -2970,7 +3030,10 @@ public class AppManager : MonoBehaviour
 
         try
         {
-            TaskOptimizer.Optimize(currentTask, containerHierarchyPaths, GetCurrentHierarchyIds());
+            TaskOptimizer.Optimize(
+                currentTask,
+                containerHierarchyPaths,
+                GetCurrentHierarchyIds());
         }
         catch (InvalidOperationException exception)
         {
@@ -2980,11 +3043,13 @@ public class AppManager : MonoBehaviour
 
         AddHubTaskIfNeeded();
 
-        PrepareCurrentTask();
+        // Registra l'ordine definitivo.
+        // ReturnHub viene escluso dal logger.
+        testLogger?.LogAppSequence(currentTask);
 
+        PrepareCurrentTask();
         StartNavigation();
     }
-
     private void PrepareCurrentTask()
     {
         currentPath.Clear();
@@ -3123,21 +3188,31 @@ public class AppManager : MonoBehaviour
     //chiamata quando si ritira un reperto dallo scaffale
     public async void WithdrawArtifact()
     {
-        //PlayerPrefs.DeleteKey(artifactPP + artifactSelected.GetComponent<ArtifactView>().data.id.ToString());
-        //artifactSelected.GetComponent<ArtifactView>().data.SetShelfID(-1);
+        TaskItem item = currentTask.Current;
+
+        if (item == null ||
+            item.Artifact == null ||
+            item.Operation != TaskOperation.Pick)
+        {
+            return;
+        }
+
+        // Timestamp della conferma, prima dell'aggiornamento
+        // dei dati e dell'attesa della risposta del server.
+        LogCurrentAppConfirmation();
+
         A_Menu.artifactIndicator.SetActive(false);
         A_Menu.artifactIndicator.transform.SetParent(null);
-        //Artifact data = artifactSelected.GetComponent<ArtifactView>().data;
-        Artifact data = currentTask.Current.Artifact;
+
+        Artifact data = item.Artifact;
+
         data.shelvingUnit = -1;
         data.containerLocalPose = "";
 
         await apiService.UpdateArtifact(data);
 
-        //BackButtonArtifact();
         GoToNextTask();
     }
-    
     public GameObject GetArtifactSelected()
     { return artifactSelected; }
 
@@ -3242,6 +3317,11 @@ public class AppManager : MonoBehaviour
         return artifactsOnList[index]
             .GetComponent<ArtifactView>()
             .data;
+    }
+
+    public void LogCurrentAppConfirmation()
+    {
+        testLogger?.LogAppConfirmation(currentTask.Current);
     }
 
     //funzione di debug chiamata da handmenu per visualizzare la posizione di tutti gli shelves

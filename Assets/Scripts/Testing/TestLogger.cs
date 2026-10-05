@@ -3,6 +3,7 @@ using System.Collections;
 using System.Globalization;
 using System.IO;
 using UnityEngine;
+using System.Collections.Generic;
 
 public class TestLogger : MonoBehaviour
 {
@@ -39,6 +40,11 @@ public class TestLogger : MonoBehaviour
 
     private Coroutine trackingCoroutine;
     private bool isTaskActive;
+
+    private string appSequenceId = "";
+    private int appSequenceTask = -1;
+
+    private readonly List<TaskItem> loggedAppItems = new List<TaskItem>();
 
     public string ParticipantId { get; private set; }
 
@@ -83,43 +89,40 @@ public class TestLogger : MonoBehaviour
     /// </summary>
     public void StartNewSession()
     {
+        isTaskActive = false;
+        StopPositionTracking();
         CloseLog();
 
-        ParticipantId =
-            ResolveParticipantId();
+        appSequenceId = "";
+        appSequenceTask = -1;
+        loggedAppItems.Clear();
+
+        ParticipantId = ResolveParticipantId();
 
         SessionId =
-            $"{ParticipantId}_" +
-            $"{condition}_" +
-            $"{DateTime.Now:yyyyMMdd_HHmmss}";
+            $"{ParticipantId}_{condition}_" +
+            $"{DateTime.Now:yyyyMMdd_HHmmss_fff}";
 
-        string directory =
-            Path.Combine(
-                Application.persistentDataPath,
-                "TestLogs"
-            );
+        string directory = Path.Combine(
+            Application.persistentDataPath,
+            "TestLogs");
 
         Directory.CreateDirectory(directory);
 
-        filePath =
-            Path.Combine(
-                directory,
-                $"{SessionId}.csv"
-            );
+        filePath = Path.Combine(
+            directory,
+            $"{SessionId}.csv");
 
-        FileStream fileStream =
-            new FileStream(
-                filePath,
-                FileMode.Create,
-                FileAccess.Write,
-                FileShare.Read
-            );
+        FileStream fileStream = new FileStream(
+            filePath,
+            FileMode.Create,
+            FileAccess.Write,
+            FileShare.Read);
 
-        writer =
-            new StreamWriter(fileStream)
-            {
-                AutoFlush = true
-            };
+        writer = new StreamWriter(fileStream)
+        {
+            AutoFlush = true
+        };
 
         writer.WriteLine(
             "Timestamp;" +
@@ -137,18 +140,20 @@ public class TestLogger : MonoBehaviour
             "Z;" +
             "FirstManipulationStart;" +
             "LastManipulationEnd;" +
-            "Correct"
-        );
+            "Correct;" +
+            "AppSequenceId;" +
+            "AppItemIndex;" +
+            "AppPhase;" +
+            "SourceContainerId;" +
+            "DestinationContainerId;" +
+            "TransferId");
 
         Debug.Log(
-            $"[TestLogger] Session started: {SessionId}"
-        );
+            $"[TestLogger] Session started: {SessionId}");
 
         Debug.Log(
-            $"[TestLogger] Log file: {filePath}"
-        );
+            $"[TestLogger] Log file: {filePath}");
     }
-
     private string ResolveParticipantId()
     {
         if (!assignParticipantAutomatically)
@@ -378,14 +383,18 @@ public class TestLogger : MonoBehaviour
     private IEnumerator TrackPosition()
     {
         WaitForSeconds wait =
-            new WaitForSeconds(
-                trackingInterval
-            );
+            new WaitForSeconds(trackingInterval);
 
         while (isTaskActive)
         {
-            LogCurrentPosition();
+            // La prima posizione viene già registrata
+            // da StartNextTask().
             yield return wait;
+
+            if (isTaskActive)
+            {
+                LogCurrentPosition();
+            }
         }
 
         trackingCoroutine = null;
@@ -587,6 +596,161 @@ public class TestLogger : MonoBehaviour
         );
     }
 
+    public void LogManipulation(
+    string operation,
+    string artifactId,
+    DateTime manipulationStart,
+    DateTime manipulationEnd,
+    Vector3 releasePosition)
+    {
+        if (!CanLogArtifactEvent())
+            return;
+
+        WriteCsvLine(
+            eventName: "Manipulation",
+            operation: operation,
+            artifactId: artifactId,
+            expectedTargetId: "",
+            actualTargetId: "",
+            x: releasePosition.x,
+            y: releasePosition.y,
+            z: releasePosition.z,
+            firstManipulationStart: manipulationStart,
+            lastManipulationEnd: manipulationEnd,
+            correct: null);
+    }
+
+    public void LogAppSequence(WarehouseTask task)
+    {
+        if (condition != TestCondition.HoloLens ||
+            !CanLogArtifactEvent() ||
+            task == null)
+        {
+            return;
+        }
+
+        appSequenceId = Guid.NewGuid().ToString("N");
+        appSequenceTask = currentTask;
+        loggedAppItems.Clear();
+
+        WriteCsvLine(
+            eventName: "AppSequenceStarted",
+            operation: "",
+            artifactId: "",
+            expectedTargetId: "",
+            actualTargetId: "",
+            x: null,
+            y: null,
+            z: null,
+            firstManipulationStart: null,
+            lastManipulationEnd: null,
+            correct: null,
+            sequenceId: appSequenceId);
+
+        foreach (TaskItem item in task.TaskItems)
+        {
+            if (item == null ||
+                item.Artifact == null ||
+                item.Operation == TaskOperation.ReturnHub)
+            {
+                continue;
+            }
+
+            loggedAppItems.Add(item);
+
+            WriteAppItem(
+                "AppSequenceItem",
+                item,
+                appSequenceId,
+                loggedAppItems.Count);
+        }
+    }
+
+    public void LogAppConfirmation(TaskItem item)
+    {
+        if (condition != TestCondition.HoloLens ||
+            !CanLogArtifactEvent() ||
+            item == null ||
+            item.Artifact == null ||
+            item.Operation == TaskOperation.ReturnHub)
+        {
+            return;
+        }
+
+        string eventName;
+
+        if (item.Operation == TaskOperation.Pick)
+        {
+            eventName = "AppPickConfirmed";
+        }
+        else if (item.Operation == TaskOperation.Deposit)
+        {
+            eventName = "AppDepositConfirmed";
+        }
+        else
+        {
+            return;
+        }
+
+        int index = appSequenceTask == currentTask
+            ? loggedAppItems.IndexOf(item)
+            : -1;
+
+        // Conserva comunque la conferma se manca lo snapshot,
+        // senza associarla erroneamente a una vecchia sequenza.
+        string sequenceId = index >= 0
+            ? appSequenceId
+            : "";
+
+        int? itemIndex = index >= 0
+            ? (int?)(index + 1)
+            : null;
+
+        if (index < 0)
+        {
+            Debug.LogWarning(
+                "[TestLogger] App confirmation without a matching " +
+                "sequence snapshot.");
+        }
+
+        WriteAppItem(
+            eventName,
+            item,
+            sequenceId,
+            itemIndex);
+    }
+
+    private void WriteAppItem(
+        string eventName,
+        TaskItem item,
+        string sequenceId,
+        int? itemIndex)
+    {
+        WriteCsvLine(
+            eventName: eventName,
+            operation: item.ExperimentOperation.ToString(),
+            artifactId: item.Artifact.id.ToString(
+                CultureInfo.InvariantCulture),
+            expectedTargetId: "",
+            actualTargetId: "",
+            x: null,
+            y: null,
+            z: null,
+            firstManipulationStart: null,
+            lastManipulationEnd: null,
+            correct: null,
+            sequenceId: sequenceId,
+            itemIndex: itemIndex,
+            appPhase: item.Operation.ToString(),
+            sourceContainerId: item.SourceContainerId >= 0
+                ? (int?)item.SourceContainerId
+                : null,
+            destinationContainerId: item.DestinationContainerId >= 0
+                ? (int?)item.DestinationContainerId
+                : null,
+            transferId: item.TransferId);
+    }
+
     private bool CanLogArtifactEvent()
     {
         if (writer == null)
@@ -623,72 +787,77 @@ public class TestLogger : MonoBehaviour
         float? z,
         DateTime? firstManipulationStart,
         DateTime? lastManipulationEnd,
-        bool? correct)
+        bool? correct,
+        string sequenceId = "",
+        int? itemIndex = null,
+        string appPhase = "",
+        int? sourceContainerId = null,
+        int? destinationContainerId = null,
+        string transferId = "")
     {
         if (writer == null)
         {
             Debug.LogWarning(
-                "[TestLogger] Cannot write to CSV: writer is null."
-            );
-
+                "[TestLogger] Cannot write to CSV: writer is null.");
             return;
         }
 
-        string timestamp =
-            FormatTimestamp(
-                DateTime.Now
-            );
+        string[] values =
+        {
+        FormatTimestamp(DateTime.Now),
+        ParticipantId,
+        condition.ToString(),
+        SessionId,
+        currentTask.ToString(CultureInfo.InvariantCulture),
+        eventName,
+        operation,
+        artifactId,
+        expectedTargetId,
+        actualTargetId,
+        FormatFloat(x),
+        FormatFloat(y),
+        FormatFloat(z),
 
-        string xValue =
-            FormatFloat(x);
+        firstManipulationStart.HasValue
+            ? FormatTimestamp(firstManipulationStart.Value)
+            : "",
 
-        string yValue =
-            FormatFloat(y);
+        lastManipulationEnd.HasValue
+            ? FormatTimestamp(lastManipulationEnd.Value)
+            : "",
 
-        string zValue =
-            FormatFloat(z);
+        correct.HasValue
+            ? (correct.Value ? "true" : "false")
+            : "",
 
-        string firstStartValue =
-            firstManipulationStart.HasValue
-                ? FormatTimestamp(
-                    firstManipulationStart.Value
-                )
-                : "";
+        sequenceId,
 
-        string lastEndValue =
-            lastManipulationEnd.HasValue
-                ? FormatTimestamp(
-                    lastManipulationEnd.Value
-                )
-                : "";
+        itemIndex.HasValue
+            ? itemIndex.Value.ToString(CultureInfo.InvariantCulture)
+            : "",
 
-        string correctValue =
-            correct.HasValue
-                ? correct.Value
-                    ? "true"
-                    : "false"
-                : "";
+        appPhase,
 
-        writer.WriteLine(
-            $"{EscapeCsv(timestamp)};" +
-            $"{EscapeCsv(ParticipantId)};" +
-            $"{EscapeCsv(condition.ToString())};" +
-            $"{EscapeCsv(SessionId)};" +
-            $"{currentTask};" +
-            $"{EscapeCsv(eventName)};" +
-            $"{EscapeCsv(operation)};" +
-            $"{EscapeCsv(artifactId)};" +
-            $"{EscapeCsv(expectedTargetId)};" +
-            $"{EscapeCsv(actualTargetId)};" +
-            $"{xValue};" +
-            $"{yValue};" +
-            $"{zValue};" +
-            $"{EscapeCsv(firstStartValue)};" +
-            $"{EscapeCsv(lastEndValue)};" +
-            $"{correctValue}"
-        );
+        sourceContainerId.HasValue
+            ? sourceContainerId.Value.ToString(
+                CultureInfo.InvariantCulture)
+            : "",
+
+        destinationContainerId.HasValue
+            ? destinationContainerId.Value.ToString(
+                CultureInfo.InvariantCulture)
+            : "",
+
+        transferId
+    };
+
+        for (int i = 0; i < values.Length; i++)
+        {
+            values[i] = EscapeCsv(values[i]);
+        }
+
+        writer.WriteLine(string.Join(";", values));
     }
-
     private static string FormatTimestamp(
         DateTime value)
     {

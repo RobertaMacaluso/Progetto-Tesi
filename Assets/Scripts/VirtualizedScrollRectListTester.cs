@@ -297,30 +297,28 @@ namespace MixedReality.Toolkit.Examples.Demos
 
         public async void DepositInShelf()
         {
-            /*GameObject artifact = appManager.GetArtifactSelected();
-            Artifact data = artifact.GetComponent<ArtifactView>().data;
-            data.SetShelfID(shelfForDeposit.GetComponent<StorageContainerView>().data.id);
-            
-            // salvataggio
-            //PlayerPrefs.SetInt(appManager.artifactPP + artifact.GetComponent<ArtifactView>().data.id.ToString(), shelfForDeposit.GetComponent<StorageContainerView>().data.id);
-            //PlayerPrefs.SetInt(appManager.artifactPP + artifact.GetComponent<ArtifactView>().data.id.ToString() + "_Last", shelfForDeposit.GetComponent<StorageContainerView>().data.id);
-
-            CalculateArtifactPose(artifact);
-
-            await appManager.apiService.UpdateArtifact(data);
-
-            Debug.Log("Deposit in Shelf");
-            appManager.DepositSucceded();*/
-
             TaskItem taskItem = appManager.GetCurrentTaskItem();
+
+            if (taskItem == null ||
+                taskItem.Artifact == null ||
+                taskItem.Operation != TaskOperation.Deposit ||
+                taskItem.ShelfView == null ||
+                taskItem.ShelfView.data == null)
+            {
+                return;
+            }
+
+            // Timestamp della conferma, prima di SetShelfID()
+            // e della chiamata al server.
+            appManager.LogCurrentAppConfirmation();
 
             Artifact data = taskItem.Artifact;
 
-            //data.SetShelfID(
-            //    shelfForDeposit.GetComponent<StorageContainerView>().data.id);
             data.SetShelfID(taskItem.ShelfView.data.id);
 
-            CalculateArtifactPose(data, taskItem.ShelfView);
+            CalculateArtifactPose(
+                data,
+                taskItem.ShelfView);
 
             await appManager.apiService.UpdateArtifact(data);
 
@@ -328,7 +326,6 @@ namespace MixedReality.Toolkit.Examples.Demos
 
             appManager.DepositSucceded();
         }
-
         //private void CalculateArtifactPose(GameObject artifact)
         private void CalculateArtifactPose(Artifact artifact, StorageContainerView shelfView)
         {
