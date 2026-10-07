@@ -46,6 +46,11 @@ public class TestLogger : MonoBehaviour
 
     private readonly List<TaskItem> loggedAppItems = new List<TaskItem>();
 
+    private readonly HashSet<string> placementArtifactIds = new();
+
+    private int placementArtifactsTask = -1;
+    private string placementArtifactsSession = string.Empty;
+
     public string ParticipantId { get; private set; }
 
     public string SessionId { get; private set; }
@@ -315,27 +320,16 @@ public class TestLogger : MonoBehaviour
     /// </summary>
     public void EndCurrentTask()
     {
-        if (currentTask == 0)
+        if (currentTask == 0 || !isTaskActive)
         {
-            Debug.LogWarning(
-                "[TestLogger] EndCurrentTask called before " +
-                "the first task was started."
-            );
-
-            return;
-        }
-
-        if (!isTaskActive)
-        {
-            Debug.LogWarning(
-                $"[TestLogger] Task {currentTask} is not active."
-            );
-
             return;
         }
 
         LogCurrentPosition();
         StopPositionTracking();
+
+        // Valuta i reperti mentre il task è ancora attivo.
+        LogFinalPlacements();
 
         WriteEvent("TaskCompleted");
 
@@ -344,6 +338,20 @@ public class TestLogger : MonoBehaviour
         Debug.Log(
             $"[TestLogger] Task {currentTask} completed."
         );
+    }
+
+    private void RegisterPlacementArtifact(string artifactId)
+    {
+        if (placementArtifactsTask != currentTask ||
+            placementArtifactsSession != SessionId)
+        {
+            placementArtifactIds.Clear();
+
+            placementArtifactsTask = currentTask;
+            placementArtifactsSession = SessionId;
+        }
+
+        placementArtifactIds.Add(artifactId);
     }
 
     private void StartPositionTracking()
@@ -493,6 +501,8 @@ public class TestLogger : MonoBehaviour
             return;
         }
 
+        RegisterPlacementArtifact(artifactId);
+
         WriteCsvLine(
             eventName: "ArtifactLoaded",
             operation: operation,
@@ -502,16 +512,9 @@ public class TestLogger : MonoBehaviour
             x: null,
             y: null,
             z: null,
-            firstManipulationStart:
-                firstManipulationStart,
-            lastManipulationEnd:
-                lastManipulationEnd,
+            firstManipulationStart: firstManipulationStart,
+            lastManipulationEnd: lastManipulationEnd,
             correct: true
-        );
-
-        Debug.Log(
-            $"[TestLogger] Artifact {artifactId} loaded " +
-            $"for {operation}."
         );
     }
 
@@ -570,6 +573,8 @@ public class TestLogger : MonoBehaviour
             return;
         }
 
+        RegisterPlacementArtifact(artifactId);
+
         WriteCsvLine(
             eventName: "PlacementAttempt",
             operation: operation,
@@ -579,20 +584,9 @@ public class TestLogger : MonoBehaviour
             x: actualPosition.x,
             y: actualPosition.y,
             z: actualPosition.z,
-            firstManipulationStart:
-                firstManipulationStart,
-            lastManipulationEnd:
-                lastManipulationEnd,
+            firstManipulationStart: firstManipulationStart,
+            lastManipulationEnd: lastManipulationEnd,
             correct: correct
-        );
-
-        Debug.Log(
-            $"[TestLogger] Placement attempt: " +
-            $"operation = {operation}, " +
-            $"artifact = {artifactId}, " +
-            $"expected = {expectedTargetId}, " +
-            $"actual = {actualTargetId}, " +
-            $"correct = {correct}."
         );
     }
 
@@ -718,6 +712,57 @@ public class TestLogger : MonoBehaviour
             item,
             sequenceId,
             itemIndex);
+    }
+
+    public void LogPlacementFinal(
+    string operation,
+    string artifactId,
+    string expectedTargetId,
+    string actualTargetId,
+    Vector3 actualPosition,
+    bool correct)
+    {
+        if (!CanLogArtifactEvent())
+        {
+            return;
+        }
+
+        WriteCsvLine(
+            eventName: "PlacementFinal",
+            operation: operation,
+            artifactId: artifactId,
+            expectedTargetId: expectedTargetId,
+            actualTargetId: actualTargetId,
+            x: actualPosition.x,
+            y: actualPosition.y,
+            z: actualPosition.z,
+            firstManipulationStart: null,
+            lastManipulationEnd: null,
+            correct: correct
+        );
+    }
+
+    private void LogFinalPlacements()
+    {
+        if (placementArtifactsTask != currentTask ||
+            placementArtifactsSession != SessionId)
+        {
+            return;
+        }
+
+        VirtualArtifact[] artifacts =
+            FindObjectsByType<VirtualArtifact>(
+                FindObjectsInactive.Include,
+                FindObjectsSortMode.None
+            );
+
+        foreach (VirtualArtifact artifact in artifacts)
+        {
+            if (placementArtifactIds.Contains(artifact.ArtifactId))
+            {
+                artifact.LogFinalPlacement();
+            }
+        }
     }
 
     private void WriteAppItem(

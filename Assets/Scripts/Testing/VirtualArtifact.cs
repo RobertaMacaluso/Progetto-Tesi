@@ -299,37 +299,37 @@ public class VirtualArtifact : MonoBehaviour
 
     private void HandleReleaseOutsideCart()
     {
-        // La singola manipolazione è già stata registrata.
-        // Un tentativo di deposito viene valutato soltanto
-        // dopo il caricamento nel carrello.
-        if (currentPhase != OperationPhase.WaitingForPlacement)
+        bool isPlacementOperation =
+            operationType == OperationType.Putaway ||
+            operationType == OperationType.Return ||
+            operationType == OperationType.Transfer;
+
+        if (!isPlacementOperation ||
+            currentPhase == OperationPhase.WaitingForCart)
+        {
+            ResetAttemptTiming();
             return;
+        }
+
+        if (testLogger == null || !testLogger.IsTaskActive)
+        {
+            ResetAttemptTiming();
+            return;
+        }
 
         if (!firstManipulationStart.HasValue ||
             !lastManipulationEnd.HasValue)
         {
+            Debug.LogWarning(
+                $"[VirtualArtifact] {artifactId}: timestamp di manipolazione mancanti."
+            );
+
             return;
         }
 
-        actualPlacementPosition = transform.position;
-        placementEvaluated = true;
+        string actualTargetId = EvaluateCurrentPlacement();
 
-        placementCorrect =
-            placementTarget != null &&
-            placementTarget.Contains(actualPlacementPosition);
-
-        // Se il target atteso contiene il reperto, lo usiamo
-        // anche come target effettivo, evitando incoerenze
-        // in presenza di volumi sovrapposti.
-        VirtualPlacementTarget actualTarget = placementCorrect
-            ? placementTarget
-            : FindTargetContainingArtifact();
-
-        string actualTargetId = actualTarget != null
-            ? actualTarget.TargetId
-            : string.Empty;
-
-        testLogger?.LogPlacementAttempt(
+        testLogger.LogPlacementAttempt(
             operationType.ToString(),
             artifactId,
             GetExpectedTargetId(),
@@ -337,13 +337,96 @@ public class VirtualArtifact : MonoBehaviour
             actualPlacementPosition,
             firstManipulationStart.Value,
             lastManipulationEnd.Value,
-            placementCorrect);
+            placementCorrect
+        );
 
-        if (placementCorrect)
-        {
-            currentPhase = OperationPhase.Completed;
-        }
+        // Completed non impedisce più i tentativi successivi.
+        currentPhase = placementCorrect
+            ? OperationPhase.Completed
+            : OperationPhase.WaitingForPlacement;
+
+        ResetAttemptTiming();
     }
+
+    private string EvaluateCurrentPlacement()
+    {
+        actualPlacementPosition = transform.position;
+        placementEvaluated = true;
+
+        bool inCart =
+            currentCart != null ||
+            FindCartContainingArtifact() != null;
+
+        ObjectManipulator manipulator =
+            GetComponent<ObjectManipulator>();
+
+        bool beingHeld =
+            manipulator != null && manipulator.isSelected;
+
+        bool insideExpectedTarget =
+            placementTarget != null &&
+            placementTarget.isActiveAndEnabled &&
+            placementTarget.Contains(actualPlacementPosition);
+
+        placementCorrect =
+            gameObject.activeInHierarchy &&
+            !inCart &&
+            !beingHeld &&
+            insideExpectedTarget;
+
+        if (inCart)
+        {
+            return "Cart";
+        }
+
+        if (!gameObject.activeInHierarchy)
+        {
+            return string.Empty;
+        }
+
+        // Il target atteso ha precedenza se più volumi si sovrappongono.
+        if (insideExpectedTarget)
+        {
+            return GetExpectedTargetId();
+        }
+
+        VirtualPlacementTarget actualTarget =
+            FindTargetContainingArtifact();
+
+        return actualTarget != null
+            ? actualTarget.TargetId
+            : string.Empty;
+    }
+
+    public void LogFinalPlacement()
+    {
+        if (testLogger == null || !testLogger.IsTaskActive)
+        {
+            return;
+        }
+
+        bool isPlacementOperation =
+            operationType == OperationType.Putaway ||
+            operationType == OperationType.Return ||
+            operationType == OperationType.Transfer;
+
+        if (!isPlacementOperation)
+        {
+            return;
+        }
+
+        string actualTargetId = EvaluateCurrentPlacement();
+
+        testLogger.LogPlacementFinal(
+            operationType.ToString(),
+            artifactId,
+            GetExpectedTargetId(),
+            actualTargetId,
+            actualPlacementPosition,
+            placementCorrect
+        );
+    }
+
     private VirtualCart FindCartContainingArtifact()
     {
         VirtualCart[] carts =
