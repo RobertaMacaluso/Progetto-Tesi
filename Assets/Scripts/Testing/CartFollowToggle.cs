@@ -18,6 +18,13 @@ public class CartFollowToggle : MonoBehaviour
     private bool wasFollowing;
     private float fixedHeight;
     private Vector3 lastForward = Vector3.forward;
+    private bool initialPoseCaptured;
+    private Transform initialParent;
+    private Vector3 initialLocalPosition;
+    private Quaternion initialLocalRotation;
+    private Vector3 initialWorldPosition;
+    private Quaternion initialWorldRotation;
+
 
     private void Awake()
     {
@@ -104,5 +111,68 @@ public class CartFollowToggle : MonoBehaviour
     private void OnDisable()
     {
         wasFollowing = false;
+    }
+
+    public void CaptureInitialPose()
+    {
+        if (initialPoseCaptured)
+        {
+            return;
+        }
+
+        if (cartTransform == null)
+        {
+            cartTransform = transform;
+        }
+
+        initialParent = cartTransform.parent;
+        initialLocalPosition = cartTransform.localPosition;
+        initialLocalRotation = cartTransform.localRotation;
+        initialWorldPosition = cartTransform.position;
+        initialWorldRotation = cartTransform.rotation;
+
+        initialPoseCaptured = true;
+    }
+
+    public void ResetForNextTask()
+    {
+        // Il toggle deve risultare OFF anche visivamente.
+        if (followToggle != null)
+        {
+            followToggle.ForceSetToggled(false);
+        }
+
+        wasFollowing = false;
+
+        if (!initialPoseCaptured)
+        {
+            Debug.LogError(
+                "[CartFollowToggle] Posizione iniziale non salvata.",
+                this
+            );
+            return;
+        }
+
+        Vector3 resetPosition = initialWorldPosition;
+        Quaternion resetRotation = initialWorldRotation;
+
+        // Se il carrello aveva un parent, rispettiamo il suo
+        // allineamento attuale senza cambiare la gerarchia.
+        if (initialParent != null)
+        {
+            resetPosition =
+                initialParent.TransformPoint(initialLocalPosition);
+            resetRotation =
+                initialParent.rotation * initialLocalRotation;
+        }
+
+        cartTransform.SetPositionAndRotation(
+            resetPosition,
+            resetRotation
+        );
+
+        fixedHeight = resetPosition.y;
+
+        Debug.Log("[CartFollowToggle] Carrello riportato all'inizio.");
     }
 }

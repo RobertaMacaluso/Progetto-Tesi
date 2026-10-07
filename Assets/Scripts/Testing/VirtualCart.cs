@@ -193,6 +193,26 @@ public class VirtualCart : MonoBehaviour
         );
     }
 
+    public void ClearCartAndDeactivateArtifacts()
+    {
+        // Salviamo i contenuti prima che ClearCart svuoti la lista.
+        VirtualArtifact[] currentArtifacts = artifacts.ToArray();
+
+        // Stacca i reperti mantenendone la posizione globale
+        // e pulisce lista e contatori del carrello.
+        ClearCart();
+
+        foreach (VirtualArtifact artifact in currentArtifacts)
+        {
+            if (artifact != null)
+            {
+                artifact.gameObject.SetActive(false);
+            }
+        }
+
+        Debug.Log("[VirtualCart] Reperti contenuti disattivati.");
+    }
+
     private void OnDisable()
     {
         artifactTriggerCounts.Clear();

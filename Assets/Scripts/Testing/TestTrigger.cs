@@ -6,6 +6,9 @@ public class TestTrigger : MonoBehaviour
 
     [Header("Reperti da separare dal magazzino")]
     [SerializeField] private Transform artifactsRoot;
+    [Header("Reset carrello tra i task")]
+    [SerializeField] private VirtualCart virtualCart;
+    [SerializeField] private CartFollowToggle cartFollowToggle;
 
     private bool artifactsDetached;
 
@@ -22,19 +25,34 @@ public class TestTrigger : MonoBehaviour
 
     private void OnTriggerExit(Collider other)
     {
-        if (!IsPlayer(other) || testLogger == null)
+        if (!IsPlayer(other))
         {
             return;
         }
 
-        // Alla prima uscita dal hub, prima di iniziare il task.
+        if (testLogger == null || testLogger.IsTaskActive)
+        {
+            return;
+        }
+
+        if (virtualCart == null || cartFollowToggle == null)
+        {
+            Debug.LogError(
+                "[TestTrigger] Assegna Virtual Cart e Cart Follow Toggle.",
+                this
+            );
+            return;
+        }
+
         if (!DetachArtifactsOnce())
         {
             return;
         }
 
+        cartFollowToggle.CaptureInitialPose();
+
         Debug.Log(
-            $"[TestTrigger] Player EXITED start/end zone: {other.name}"
+            $"[TestTrigger] Player uscito dall'hub: {other.name}"
         );
 
         testLogger.StartNextTask();
@@ -47,16 +65,32 @@ public class TestTrigger : MonoBehaviour
             return;
         }
 
+        // L'ingresso iniziale nell'hub non è la fine di un task.
+        // Evita anche reset ripetuti quando il task è già concluso.
+        if (testLogger == null || !testLogger.IsTaskActive)
+        {
+            return;
+        }
+
         Debug.Log(
-            $"[TestTrigger] Player ENTERED start/end zone: {other.name}"
+            $"[TestTrigger] Player rientrato nell'hub: {other.name}"
         );
 
-        if (testLogger != null)
+        // Prima: PlacementFinal e TaskCompleted, con i reperti
+        // ancora nelle posizioni raggiunte durante il task.
+        testLogger.EndCurrentTask();
+
+        // Dopo: pulizia per la prova successiva.
+        if (virtualCart != null)
         {
-            testLogger.EndCurrentTask();
+            virtualCart.ClearCartAndDeactivateArtifacts();
+        }
+
+        if (cartFollowToggle != null)
+        {
+            cartFollowToggle.ResetForNextTask();
         }
     }
-
     private bool DetachArtifactsOnce()
     {
         if (artifactsDetached)
