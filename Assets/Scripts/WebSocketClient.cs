@@ -13,7 +13,8 @@ public class WebSocketClient : MonoBehaviour
     //private string IP_Casa = "192.168.178.23";
     private string IP_Casa = "192.168.1.11";
     //private string IP_HotSpot = "10.153.54.75";
-    private string IP_HotSpot = "10.73.195.75";
+    [SerializeField]
+    private string IP_HotSpot = "10.224.234.75";
 
     public AppManager manager;
 

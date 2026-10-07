@@ -2602,7 +2602,6 @@ GameObject:
   - component: {fileID: 7704744404957908256}
   - component: {fileID: 3843116299835980981}
   - component: {fileID: 3917347398794683794}
-  - component: {fileID: 6364046487941768251}
   - component: {fileID: 6404148233317543384}
   m_Layer: 6
   m_Name: SM_Box_Long_Closed
@@ -2977,8 +2976,8 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   hostTransform: {fileID: 172124961915240964}
-  allowedManipulations: 1
-  allowedInteractionTypes: -2147483641
+  allowedManipulations: 3
+  allowedInteractionTypes: 1
   applyTorque: 1
   springForceSoftness: 0.1
   springTorqueSoftness: 0.1
@@ -2996,7 +2995,7 @@ MonoBehaviour:
   rotateLerpTime: 0.001
   scaleLerpTime: 0.001
   enableConstraints: 1
-  constraintsManager: {fileID: 0}
+  constraintsManager: {fileID: 3843116299835980981}
   manipulationLogicTypes:
     moveLogicType:
       reference: MixedReality.Toolkit.SpatialManipulation.MoveLogic, MixedReality.Toolkit.SpatialManipulation
@@ -3004,24 +3003,6 @@ MonoBehaviour:
       reference: MixedReality.Toolkit.SpatialManipulation.RotateLogic, MixedReality.Toolkit.SpatialManipulation
     scaleLogicType:
       reference: MixedReality.Toolkit.SpatialManipulation.ScaleLogic, MixedReality.Toolkit.SpatialManipulation
---- !u!114 &6364046487941768251
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2135421647917030631}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 80f85af46f9bddd4ea78f11cee5e3b2e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  handType: -1
-  proximityType: -1
-  executionOrder: 0
-  minimumScale: {x: 1, y: 1, z: 1}
-  maximumScale: {x: 1, y: 1, z: 1}
-  relativeToInitialState: 1
 --- !u!114 &6404148233317543384
 MonoBehaviour:
   m_ObjectHideFlags: 0

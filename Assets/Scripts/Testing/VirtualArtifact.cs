@@ -1,3 +1,5 @@
+using MixedReality.Toolkit;
+using MixedReality.Toolkit.SpatialManipulation;
 using System;
 using UnityEngine;
 
@@ -417,6 +419,71 @@ public class VirtualArtifact : MonoBehaviour
         );
     }
 
+    public void DetachFromWarehouse()
+    {
+        // Non tocchiamo i reperti spenti, anche tramite un parent.
+        if (!gameObject.activeInHierarchy)
+        {
+            return;
+        }
+
+        // Alla successiva uscita dal carrello deve tornare alla radice.
+        originalParent = null;
+
+        if (currentCart != null)
+        {
+            return;
+        }
+
+        // Conserviamo le dimensioni globali prima del distacco.
+        Vector3 worldScale = transform.lossyScale;
+
+        transform.SetParent(null, true);
+
+        // Senza parent, scala locale e globale coincidono.
+        transform.localScale = worldScale;
+
+        ObjectManipulator manipulator =
+            GetComponent<ObjectManipulator>();
+
+        if (manipulator == null)
+        {
+            return;
+        }
+
+        // I reperti devono soltanto muoversi e ruotare.
+        manipulator.AllowedManipulations =
+            TransformFlags.Move | TransformFlags.Rotate;
+
+        // MRTK applica i vincoli di scala anche se Scale non è consentito.
+        // Disabilitiamo solo quei vincoli, non il GameObject.
+        TransformConstraint[] constraints =
+            manipulator.GetComponents<TransformConstraint>();
+
+        foreach (TransformConstraint constraint in constraints)
+        {
+            if ((constraint.ConstraintType & TransformFlags.Scale) != 0)
+            {
+                constraint.enabled = false;
+            }
+        }
+
+        // Aggiorniamo il riferimento dei vincoli rimasti dopo il distacco.
+        ConstraintManager manager = manipulator.ConstraintsManager;
+
+        if (manager != null)
+        {
+            Transform host = manipulator.HostTransform;
+
+            manager.Setup(
+                new MixedRealityTransform(
+                    host.position,
+                    host.rotation,
+                    host.localScale
+                )
+            );
+        }
+    }
     public void DetachFromCart()
     {
         if (currentCart == null)
