@@ -151,6 +151,82 @@ public class AppManager : MonoBehaviour
     [Header("Experimental logging")]
     [SerializeField] private TestLogger testLogger;
 
+    public void ClearAppStateForExperimentalReset()
+    {
+        // Il deposito può avere un avanzamento ritardato di 1,5 secondi.
+        CancelInvoke(nameof(FinishDepositTask));
+
+        currentTask.Clear();
+        ResetArtifactSelected();
+        CleanupNavigation();
+        currentPath.Clear();
+
+        if (A_Menu.returnHubConfirmationUI != null)
+        {
+            A_Menu.returnHubConfirmationUI.SetActive(false);
+        }
+
+        foreach (GameObject obj in A_Menu.artifactDepositedUI)
+        {
+            if (obj != null)
+            {
+                obj.SetActive(false);
+            }
+        }
+
+        A_Menu.startTaskButton.SetActive(false);
+        A_Menu.artifactTitle.GetComponent<TextMeshProUGUI>().text =
+            artifactGeneralText;
+        A_Menu.artifactVirualizedList.gameObject.SetActive(true);
+        A_Menu.searchGroup.SetActive(true);
+        A_Menu.closeButton.SetActive(true);
+    }
+
+    public void RestoreArtifactCacheForExperimentalReset(
+        List<Artifact> initialData)
+    {
+        var byId = new Dictionary<int, Artifact>();
+
+        foreach (Artifact artifact in initialData)
+        {
+            byId[artifact.id] = artifact;
+        }
+
+        var objectsToUpdate = new HashSet<GameObject>(allArtifacts);
+
+        foreach (GameObject artifactObject in spawnedArtifacts.Values)
+        {
+            objectsToUpdate.Add(artifactObject);
+        }
+
+        foreach (GameObject artifactObject in objectsToUpdate)
+        {
+            if (artifactObject == null)
+            {
+                continue;
+            }
+
+            ArtifactView view = artifactObject.GetComponent<ArtifactView>();
+
+            if (view != null && view.data != null &&
+                byId.TryGetValue(view.data.id, out Artifact initialArtifact))
+            {
+                view.SetData(initialArtifact);
+            }
+        }
+
+        VirtualizedScrollRectListTester list =
+            A_Menu.artifactScrollView
+                .GetComponent<VirtualizedScrollRectListTester>();
+
+        if (list != null)
+        {
+            list.SetWords(allArtifacts);
+        }
+
+        UpdateArtifactList(allArtifacts);
+    }
+
 
     // Start is called before the first frame update
     async void Start()

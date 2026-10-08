@@ -6,6 +6,8 @@ using UnityEngine.Networking;
 
 public class APIService
 {
+    private int pendingArtifactUpdates;
+
     //static private string ipV4 = "10.153.54.75";
     //static private string IP_Casa = "192.168.178.23";
     static private string IP_Casa = "192.168.1.11";
@@ -22,27 +24,30 @@ public class APIService
     {
         using (UnityWebRequest request = UnityWebRequest.Get(datiUrl))
         {
+            request.timeout = 20;
             var operation = request.SendWebRequest();
 
             while (!operation.isDone)
+            {
                 await Task.Yield();
+            }
 
             if (request.result != UnityWebRequest.Result.Success)
             {
-                Debug.Log($"Errore: {request.error}");
-                Debug.Log($"Response Code: {request.responseCode}");
-                Debug.Log($"URL: {request.url}");
+                Debug.LogError(
+                    $"[APIService] Lettura reperti fallita: " +
+                    $"{request.error}. HTTP {request.responseCode}."
+                );
                 return null;
             }
 
             string json = request.downloadHandler.text;
-
-            string wrappedJson = "{ \"items\": " + json + " }";
+            string wrappedJson = "{\"items\":" + json + "}";
 
             ArtifactListWrapper result =
                 JsonUtility.FromJson<ArtifactListWrapper>(wrappedJson);
 
-            return result.items;
+            return result != null ? result.items : null;
         }
     }
 
@@ -146,28 +151,71 @@ public class APIService
     // =========================
     // UPDATE ARTIFACT BY ID
     // =========================
-    public async Task UpdateArtifact(Artifact artifact)
+    public Task UpdateArtifact(Artifact artifact)
     {
-        string json = JsonUtility.ToJson(artifact);
+        return UpdateArtifactCheckedAsync(artifact);
+    }
 
-        using var client = new UnityWebRequest(datiUrl + "/" + artifact.id, "PUT");
-
-        byte[] bodyRaw = Encoding.UTF8.GetBytes(json);
-
-        client.uploadHandler = new UploadHandlerRaw(bodyRaw);
-
-        client.downloadHandler = new DownloadHandlerBuffer();
-
-        client.SetRequestHeader("Content-Type", "application/json");
-
-        var operation = client.SendWebRequest();
-
-        while (!operation.isDone)
-            await Task.Yield();
-
-        if (client.result != UnityWebRequest.Result.Success)
+    public async Task<bool> UpdateArtifactCheckedAsync(Artifact artifact)
+    {
+        if (artifact == null)
         {
-            Debug.LogError(client.error);
+            Debug.LogError("[APIService] Reperto nullo nell'aggiornamento.");
+            return false;
+        }
+
+        pendingArtifactUpdates++;
+
+        try
+        {
+            string json = JsonUtility.ToJson(artifact);
+
+            using var request = new UnityWebRequest(
+                datiUrl + "/" + artifact.id,
+                "PUT"
+            );
+
+            request.timeout = 20;
+            request.uploadHandler = new UploadHandlerRaw(
+                Encoding.UTF8.GetBytes(json)
+            );
+            request.downloadHandler = new DownloadHandlerBuffer();
+            request.SetRequestHeader("Content-Type", "application/json");
+
+            var operation = request.SendWebRequest();
+
+            while (!operation.isDone)
+            {
+                await Task.Yield();
+            }
+
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                Debug.LogError(
+                    $"[APIService] Aggiornamento reperto {artifact.id} fallito: " +
+                    $"{request.error}. HTTP {request.responseCode}."
+                );
+                return false;
+            }
+
+            return true;
+        }
+        catch (System.Exception exception)
+        {
+            Debug.LogException(exception);
+            return false;
+        }
+        finally
+        {
+            pendingArtifactUpdates--;
+        }
+    }
+
+    public async Task WaitForPendingArtifactUpdatesAsync()
+    {
+        while (pendingArtifactUpdates > 0)
+        {
+            await Task.Yield();
         }
     }
 

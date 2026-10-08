@@ -1,138 +1,105 @@
 using UnityEngine;
+using UnityEngine.Events;
 
 public class TestTrigger : MonoBehaviour
 {
     [SerializeField] private TestLogger testLogger;
-
-    [Header("Reperti da separare dal magazzino")]
     [SerializeField] private Transform artifactsRoot;
-    [Header("Reset carrello tra i task")]
     [SerializeField] private VirtualCart virtualCart;
     [SerializeField] private CartFollowToggle cartFollowToggle;
+    [SerializeField] private TaskStateReset taskStateReset;
 
-    private bool artifactsDetached;
+    [Header("Pannello con le istruzioni del task sul carrello")]
+    [SerializeField] private GameObject taskPanel;
 
-    private void Awake()
-    {
-        if (testLogger == null)
-        {
-            Debug.LogError(
-                "[TestTrigger] Assegna il TestLogger nell'Inspector.",
-                this
-            );
-        }
-    }
+    [Header("Preparazione del task successivo")]
+    [SerializeField] private UnityEvent onTaskPreparationRequested = new();
 
-    private void OnTriggerExit(Collider other)
+    private bool playerInHub = true;
+
+    private async void OnTriggerExit(Collider other)
     {
         if (!IsPlayer(other))
         {
             return;
         }
+
+        playerInHub = false;
 
         if (testLogger == null || testLogger.IsTaskActive)
         {
             return;
         }
 
-        if (virtualCart == null || cartFollowToggle == null)
+        if (taskStateReset == null || taskPanel == null)
         {
-            Debug.LogError(
-                "[TestTrigger] Assegna Virtual Cart e Cart Follow Toggle.",
-                this
-            );
+            Debug.LogError("[TestTrigger] Assegna reset e pannello.", this);
             return;
         }
 
-        if (!DetachArtifactsOnce())
+        // Il pannello visibile è il segnale che il task è pronto.
+        if (!taskPanel.activeInHierarchy)
         {
             return;
         }
 
-        cartFollowToggle.CaptureInitialPose();
+        // Salva lo stato soltanto alla prima uscita.
+        // Nei task successivi InitializeAsync restituisce subito true.
+        bool success = await taskStateReset.InitializeAsync(
+            artifactsRoot, virtualCart, cartFollowToggle);
 
-        Debug.Log(
-            $"[TestTrigger] Player uscito dall'hub: {other.name}"
-        );
+        if (!success || playerInHub || testLogger.IsTaskActive ||
+            !taskPanel.activeInHierarchy)
+        {
+            return;
+        }
 
         testLogger.StartNextTask();
     }
 
-    private void OnTriggerEnter(Collider other)
+    private async void OnTriggerEnter(Collider other)
     {
         if (!IsPlayer(other))
         {
             return;
         }
 
-        // L'ingresso iniziale nell'hub non è la fine di un task.
-        // Evita anche reset ripetuti quando il task è già concluso.
+        playerInHub = true;
+
         if (testLogger == null || !testLogger.IsTaskActive)
         {
             return;
         }
 
-        Debug.Log(
-            $"[TestTrigger] Player rientrato nell'hub: {other.name}"
-        );
-
-        // Prima: PlacementFinal e TaskCompleted, con i reperti
-        // ancora nelle posizioni raggiunte durante il task.
+        // Prima registra lo stato finale raggiunto dall'utente.
         testLogger.EndCurrentTask();
 
-        // Dopo: pulizia per la prova successiva.
-        if (virtualCart != null)
+        // Il task precedente non deve sembrare il nuovo task pronto.
+        taskPanel.SetActive(false);
+
+        bool success = await taskStateReset.RestoreInitialStateAsync();
+
+        if (!success)
         {
-            virtualCart.ClearCartAndDeactivateArtifacts();
+            return;
         }
 
-        if (cartFollowToggle != null)
-        {
-            cartFollowToggle.ResetForNextTask();
-        }
+        // Qui collegheremo il caricamento del task dal database.
+        // Il pannello resta nascosto finché il caricatore non chiama
+        // ShowPreparedTask().
+        onTaskPreparationRequested.Invoke();
     }
-    private bool DetachArtifactsOnce()
+
+    // Chiamare dopo aver impostato davvero le istruzioni, le operazioni
+    // e i target del task successivo.
+    public void ShowPreparedTask()
     {
-        if (artifactsDetached)
+        if (testLogger == null || testLogger.IsTaskActive || taskPanel == null)
         {
-            return true;
+            return;
         }
 
-        if (artifactsRoot == null)
-        {
-            Debug.LogError(
-                "[TestTrigger] Assegna l'empty dei reperti ad Artifacts Root.",
-                this
-            );
-
-            return false;
-        }
-
-        // false: esclude i reperti sotto GameObject disattivati.
-        VirtualArtifact[] artifacts =
-            artifactsRoot.GetComponentsInChildren<VirtualArtifact>(false);
-
-        int detachedCount = 0;
-
-        foreach (VirtualArtifact artifact in artifacts)
-        {
-            // Protegge anche il caso dell'empty radice spento.
-            if (!artifact.gameObject.activeInHierarchy)
-            {
-                continue;
-            }
-
-            artifact.DetachFromWarehouse();
-            detachedCount++;
-        }
-
-        artifactsDetached = true;
-
-        Debug.Log(
-            $"[TestTrigger] Staccati dal magazzino {detachedCount} reperti attivi."
-        );
-
-        return true;
+        taskPanel.SetActive(true);
     }
 
     private bool IsPlayer(Collider other)
