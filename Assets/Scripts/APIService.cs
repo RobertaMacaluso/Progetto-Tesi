@@ -282,4 +282,30 @@ public class APIService
     {
         public List<StorageContainer> items;
     }
+
+    public async Task<ExperimentSettings> GetExperimentSettingsAsync()
+    {
+        // Usa lo stesso indirizzo del backend già configurato per /dati.
+        string serverUrl = datiUrl.Substring(0, datiUrl.LastIndexOf('/'));
+
+        using var request = UnityWebRequest.Get(serverUrl + "/experiment/settings");
+        request.timeout = 20;
+
+        var operation = request.SendWebRequest();
+
+        while (!operation.isDone)
+        {
+            await Task.Yield();
+        }
+
+        if (request.result != UnityWebRequest.Result.Success)
+        {
+            Debug.LogError(
+                $"[APIService] Lettura configurazione fallita: {request.error}. " +
+                $"HTTP {request.responseCode}.");
+            return null;
+        }
+
+        return JsonUtility.FromJson<ExperimentSettings>(request.downloadHandler.text);
+    }
 }

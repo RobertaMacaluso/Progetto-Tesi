@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.Events;
 
 public class TestTrigger : MonoBehaviour
 {
@@ -8,14 +7,23 @@ public class TestTrigger : MonoBehaviour
     [SerializeField] private VirtualCart virtualCart;
     [SerializeField] private CartFollowToggle cartFollowToggle;
     [SerializeField] private TaskStateReset taskStateReset;
-
-    [Header("Pannello con le istruzioni del task sul carrello")]
     [SerializeField] private GameObject taskPanel;
-
-    [Header("Preparazione del task successivo")]
-    [SerializeField] private UnityEvent onTaskPreparationRequested = new();
+    [SerializeField] private ExperimentSettingsPanel settingsPanel;
 
     private bool playerInHub = true;
+    private bool isStartingTask;
+    private bool isRestoring;
+    private bool resetSucceeded = true;
+    private bool taskPrepared;
+
+    public bool CanLoadSettings =>
+        playerInHub && testLogger != null && !testLogger.IsTaskActive &&
+        !isStartingTask && !isRestoring && resetSucceeded;
+
+    private void Awake()
+    {
+        HidePreparedTask();
+    }
 
     private async void OnTriggerExit(Collider other)
     {
@@ -26,35 +34,44 @@ public class TestTrigger : MonoBehaviour
 
         playerInHub = false;
 
-        if (testLogger == null || testLogger.IsTaskActive)
+        if (testLogger == null || testLogger.IsTaskActive ||
+            isStartingTask || isRestoring || !resetSucceeded || !taskPrepared)
         {
             return;
         }
 
-        if (taskStateReset == null || taskPanel == null)
+        if (taskStateReset == null || taskPanel == null ||
+            !taskPanel.activeInHierarchy)
         {
             Debug.LogError("[TestTrigger] Assegna reset e pannello.", this);
             return;
         }
 
-        // Il pannello visibile è il segnale che il task è pronto.
-        if (!taskPanel.activeInHierarchy)
+        isStartingTask = true;
+
+        try
         {
-            return;
+            // Conserva l'acquisizione iniziale già verificata.
+            bool success = await taskStateReset.InitializeAsync(
+                artifactsRoot, virtualCart, cartFollowToggle);
+
+            if (!success || playerInHub || testLogger.IsTaskActive ||
+                !taskPrepared || !taskPanel.activeInHierarchy)
+            {
+                return;
+            }
+
+            testLogger.StartConfiguredTask();
+
+            if (testLogger.IsTaskActive && settingsPanel != null)
+            {
+                settingsPanel.NotifyTaskStarted();
+            }
         }
-
-        // Salva lo stato soltanto alla prima uscita.
-        // Nei task successivi InitializeAsync restituisce subito true.
-        bool success = await taskStateReset.InitializeAsync(
-            artifactsRoot, virtualCart, cartFollowToggle);
-
-        if (!success || playerInHub || testLogger.IsTaskActive ||
-            !taskPanel.activeInHierarchy)
+        finally
         {
-            return;
+            isStartingTask = false;
         }
-
-        testLogger.StartNextTask();
     }
 
     private async void OnTriggerEnter(Collider other)
@@ -71,34 +88,51 @@ public class TestTrigger : MonoBehaviour
             return;
         }
 
-        // Prima registra lo stato finale raggiunto dall'utente.
+        // Mantiene i finali prima della chiusura e del ripristino.
         testLogger.EndCurrentTask();
+        HidePreparedTask();
 
-        // Il task precedente non deve sembrare il nuovo task pronto.
-        taskPanel.SetActive(false);
-
-        bool success = await taskStateReset.RestoreInitialStateAsync();
-
-        if (!success)
+        if (settingsPanel != null)
         {
-            return;
+            settingsPanel.NotifyTaskCompleted();
         }
 
-        // Qui collegheremo il caricamento del task dal database.
-        // Il pannello resta nascosto finché il caricatore non chiama
-        // ShowPreparedTask().
-        onTaskPreparationRequested.Invoke();
+        isRestoring = true;
+        resetSucceeded = false;
+
+        try
+        {
+            resetSucceeded = await taskStateReset.RestoreInitialStateAsync();
+        }
+        finally
+        {
+            isRestoring = false;
+
+            if (settingsPanel != null)
+            {
+                settingsPanel.NotifyResetFinished(resetSucceeded);
+            }
+        }
     }
 
-    // Chiamare dopo aver impostato davvero le istruzioni, le operazioni
-    // e i target del task successivo.
+    public void HidePreparedTask()
+    {
+        taskPrepared = false;
+
+        if (taskPanel != null)
+        {
+            taskPanel.SetActive(false);
+        }
+    }
+
     public void ShowPreparedTask()
     {
-        if (testLogger == null || testLogger.IsTaskActive || taskPanel == null)
+        if (!CanLoadSettings || taskPanel == null)
         {
             return;
         }
 
+        taskPrepared = true;
         taskPanel.SetActive(true);
     }
 

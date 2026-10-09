@@ -70,23 +70,85 @@ public class TestLogger : MonoBehaviour
     {
         if (trackingInterval <= 0f)
         {
-            Debug.LogWarning(
-                "[TestLogger] Tracking interval must be " +
-                "greater than zero. Using 0.1 seconds."
-            );
-
-            trackingInterval = 0.1f;
+            Debug.LogWarning("[TestLogger] Intervallo non valido: uso 0,5 secondi.");
+            trackingInterval = 0.5f;
         }
 
         if (appManager == null)
         {
-            Debug.LogWarning(
-                "[TestLogger] The Transform used for position " +
-                "tracking has not been assigned."
-            );
+            Debug.LogWarning("[TestLogger] Assegna il Transform per tracciare la posizione.");
         }
 
-        StartNewSession();
+        // Il CSV viene aperto dopo aver letto partecipante e condizione dal database.
+        // Non chiamare StartNewSession qui.
+    }
+
+    public bool ApplyExperimentSettings(
+        string databaseParticipantId,
+        string databaseCondition,
+        int databaseTaskNumber)
+    {
+        if (isTaskActive || string.IsNullOrWhiteSpace(databaseParticipantId) ||
+            databaseTaskNumber < 1 || databaseTaskNumber > 9)
+        {
+            return false;
+        }
+
+        TestCondition nextCondition;
+
+        if (databaseCondition == "HoloLens")
+        {
+            nextCondition = TestCondition.HoloLens;
+        }
+        else if (databaseCondition == "Traditional")
+        {
+            nextCondition = TestCondition.Traditional;
+        }
+        else
+        {
+            return false;
+        }
+
+        string nextParticipantId = databaseParticipantId.Trim();
+
+        if (int.TryParse(nextParticipantId, out int participantNumber))
+        {
+            nextParticipantId = $"P{participantNumber:D2}";
+        }
+
+        bool needsNewSession = writer == null ||
+                               ParticipantId != nextParticipantId ||
+                               condition != nextCondition;
+
+        assignParticipantAutomatically = false;
+        participantIdOverride = nextParticipantId;
+        condition = nextCondition;
+
+        if (needsNewSession)
+        {
+            // Riusa la tua funzione attuale: stesso header e stessi eventi.
+            StartNewSession();
+        }
+
+        SetTask(databaseTaskNumber);
+        return true;
+    }
+
+    public void StartConfiguredTask()
+    {
+        if (isTaskActive || writer == null || currentTask < 1 || currentTask > 9)
+        {
+            Debug.LogWarning("[TestLogger] Carica una configurazione prima di avviare la prova.");
+            return;
+        }
+
+        // Il numero è già stato letto dal database: nessun incremento.
+        isTaskActive = true;
+        WriteEvent("TaskStarted");
+        LogCurrentPosition();
+        StartPositionTracking();
+
+        Debug.Log($"[TestLogger] Task configurato {currentTask} avviato.");
     }
 
     /// <summary>
