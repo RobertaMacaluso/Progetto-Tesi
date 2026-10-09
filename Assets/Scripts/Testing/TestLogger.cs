@@ -527,6 +527,8 @@ public class TestLogger : MonoBehaviour
             return;
         }
 
+        RegisterPlacementArtifact(artifactId);
+
         WriteCsvLine(
             eventName: "ArtifactPicked",
             operation: "Picking",
@@ -536,10 +538,8 @@ public class TestLogger : MonoBehaviour
             x: null,
             y: null,
             z: null,
-            firstManipulationStart:
-                firstManipulationStart,
-            lastManipulationEnd:
-                lastManipulationEnd,
+            firstManipulationStart: firstManipulationStart,
+            lastManipulationEnd: lastManipulationEnd,
             correct: true
         );
 
@@ -820,10 +820,37 @@ public class TestLogger : MonoBehaviour
 
         foreach (VirtualArtifact artifact in artifacts)
         {
-            if (placementArtifactIds.Contains(artifact.ArtifactId))
+            if (artifact == null ||
+                !placementArtifactIds.Contains(artifact.ArtifactId))
             {
-                artifact.LogFinalPlacement();
+                continue;
             }
+
+            if (artifact.Operation ==
+                VirtualArtifact.OperationType.Picking)
+            {
+                VirtualCart cart = artifact.CurrentCart;
+
+                bool correct =
+                    artifact.gameObject.activeInHierarchy &&
+                    cart != null &&
+                    cart.isActiveAndEnabled &&
+                    cart.ContainsArtifact(artifact) &&
+                    cart.IsArtifactInsideTrigger(artifact);
+
+                LogPlacementFinal(
+                    operation: "Picking",
+                    artifactId: artifact.ArtifactId,
+                    expectedTargetId: "Cart",
+                    actualTargetId: correct ? "Cart" : string.Empty,
+                    actualPosition: artifact.transform.position,
+                    correct: correct
+                );
+
+                continue;
+            }
+
+            artifact.LogFinalPlacement();
         }
     }
 
