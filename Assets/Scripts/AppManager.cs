@@ -1646,23 +1646,19 @@ public class AppManager : MonoBehaviour
     {
         isChoosingDestination = false;
         isSelectingTransfer = false;
+
         HideArtifactActionButtons();
 
-        if (artifactScrollViewToBeReset)
-        {
-            VirtualizedScrollRectListTester list = A_Menu.artifactScrollView.GetComponent<VirtualizedScrollRectListTester>();
-            list.SetScrollView();
-            artifactScrollViewToBeReset = false;
-            list.SetWords(allArtifacts);
-            //list.RefreshVisibleButtons();
-        }
-        //A_Menu.artifactVirualizedList.gameObject.SetActive(true);
         A_Menu.searchGroup.SetActive(true);
 
-        this.gameObject.GetComponent<DictationManager>().ResetText();
+        GetComponent<DictationManager>().ResetText();
 
         A_Menu.artifactText.SetActive(false);
-        A_Menu.artifactTitle.GetComponent<TextMeshProUGUI>().text = artifactGeneralText;
+
+        A_Menu.artifactTitle
+            .GetComponent<TextMeshProUGUI>()
+            .text = artifactGeneralText;
+
         A_Menu.addPickButton.SetActive(false);
         A_Menu.artifactBackButton.SetActive(false);
 
@@ -1672,13 +1668,25 @@ public class AppManager : MonoBehaviour
         vsrltDeposit.SetForDeposit(false);
 
         if (!currentTask.IsEmpty)
+        {
             A_Menu.startTaskButton.SetActive(true);
+        }
 
-
-        //yield return new WaitForSeconds(3f);
         A_Menu.artifactVirualizedList.gameObject.SetActive(true);
 
+        VirtualizedScrollRectListTester catalog =
+            A_Menu.artifactScrollView
+                .GetComponent<VirtualizedScrollRectListTester>();
+
+        if (artifactScrollViewToBeReset)
+        {
+            catalog.SetWords(allArtifacts);
+            artifactScrollViewToBeReset = false;
+        }
+
         artifactSelected = null;
+
+        catalog.RefreshVisibleButtons();
     }
 
     //chiamata quando si clicca sul bottone di un reperto
@@ -3393,6 +3401,18 @@ public class AppManager : MonoBehaviour
         return artifactsOnList[index]
             .GetComponent<ArtifactView>()
             .data;
+    }
+
+    public void OpenExperimentCatalog()
+    {
+        // Nasconde le pagine utilizzate dal ricercatore per il setup.
+        homePanel.SetActive(false);
+        markerPanel.SetActive(false);
+        shelvesListPanel.SetActive(false);
+
+        // Apre il catalogo e prepara la lista dei reperti.
+        A_Menu.artifactsPanel.SetActive(true);
+        CreateArtifactScrollView();
     }
 
     public void LogCurrentAppConfirmation()

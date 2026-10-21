@@ -360,18 +360,28 @@ namespace MixedReality.Toolkit.Examples.Demos
 
         public void SetWords(List<GameObject> items)
         {
-            //Debug.Log("SetWords");
             list = GetComponent<VirtualizedScrollRectList>();
+
+            // Ritira i pulsanti che rappresentavano la lista precedente.
             list.SetItemCount(0);
+
             buttonsNames.Clear();
 
-            for (int i = 0; i < items.Count; i++)
+            foreach (GameObject item in items)
             {
-                buttonsNames.Add(items[i].name);
+                buttonsNames.Add(item.name);
+            }
+
+            // Aggiorna l'associazione indice → reperto prima
+            // che i pulsanti della nuova lista vengano mostrati.
+            if (CompareTag("Artifact list"))
+            {
+                appManager.UpdateArtifactList(items);
             }
 
             list.SetItemCount(items.Count);
-            this.gameObject.GetComponent<ScrollRect>().verticalNormalizedPosition = 1f;
+
+            GetComponent<ScrollRect>().verticalNormalizedPosition = 1f;
         }
 
         private List<GameObject> GetNextLogicalLevel(GameObject parent)
@@ -653,43 +663,75 @@ namespace MixedReality.Toolkit.Examples.Demos
 
         private void UpdateTaskButton(GameObject button, bool inTask)
         {
-            if (inTask)
+            Transform backplate = button.transform.Find("Backplate");
+
+            if (backplate == null)
             {
-                Debug.Log("Colore verde");
-                ColorUtility.TryParseHtmlString("#0CBE02FF", out var color);
-                button.transform.GetChild(0).GetComponent<RawImage>().color = color;
-
-                //button.GetComponent<BoxCollider>().enabled = false;
-                //button.GetComponent<BoxCollider>().isTrigger = true;
-
-                //button.GetComponentInChildren<UnityEngine.UI.Image>().sprite = "Icon_ChevronRight_F.png";
+                return;
             }
-            else
+
+            RawImage background = backplate.GetComponent<RawImage>();
+
+            if (background == null)
             {
-                ColorUtility.TryParseHtmlString("#97D8FF51", out var color);
-                button.transform.GetChild(0).GetComponent<RawImage>().color = color;
-
-                //button.GetComponent<BoxCollider>().enabled = true;
-
-                Debug.Log("Colore normale");
+                return;
             }
-           
+
+            Color desiredColor = inTask
+                ? new Color32(12, 190, 2, 255)
+                : new Color32(151, 216, 255, 81);
+
+            background.color = desiredColor;
+
+            // Rimuove un'eventuale tinta residua del renderer.
+            background.canvasRenderer.SetColor(Color.white);
+
+            // Richiede di ricostruire la grafica con il colore attuale.
+            background.SetVerticesDirty();
         }
 
         public void RefreshVisibleButtons()
         {
-            for (int i = 0; i < list.ItemCount; i++)
+            if (!CompareTag("Artifact list") || !isActiveAndEnabled)
             {
-                if (!list.TryGetVisible(i, out GameObject go))
-                    continue;
-
-                Artifact artifact =
-                    appManager.GetArtifactOnList(i);
-
-                UpdateTaskButton(
-                    go,
-                    appManager.IsArtifactInCurrentTask(artifact.id));
+                return;
             }
+
+            if (list == null)
+            {
+                list = GetComponent<VirtualizedScrollRectList>();
+            }
+
+            if (list == null)
+            {
+                return;
+            }
+
+            int count = Mathf.Min(
+                list.ItemCount,
+                buttonsNames.Count
+            );
+
+            for (int i = 0; i < count; i++)
+            {
+                if (!list.TryGetVisible(i, out GameObject button))
+                {
+                    continue;
+                }
+
+                Artifact artifact = appManager.GetArtifactOnList(i);
+
+                bool inTask =
+                    artifact != null &&
+                    appManager.IsArtifactInCurrentTask(artifact.id);
+
+                UpdateTaskButton(button, inTask);
+            }
+        }
+
+        private void LateUpdate()
+        {
+            RefreshVisibleButtons();
         }
 
         public void Searching(string txt)

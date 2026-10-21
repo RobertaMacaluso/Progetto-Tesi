@@ -17,6 +17,9 @@ public class ExperimentSettingsPanel : MonoBehaviour
     [SerializeField] private TMP_Text taskTitle;
     [SerializeField] private TMP_Text taskInstructions;
 
+    [Header("Menu operativo dell'app")]
+    [SerializeField] private GameObject operationalMenuRoot;
+
     private ExperimentSettings loadedSettings;
     private string lastCompletedTaskKey = "";
     private bool isLoading;
@@ -62,9 +65,12 @@ public class ExperimentSettingsPanel : MonoBehaviour
 
         if (appManager == null || appManager.apiService == null ||
             testLogger == null || summaryText == null ||
-            taskInstructions == null)
+            taskInstructions == null || operationalMenuRoot == null)
         {
-            SetStatus("Assegna tutti i riferimenti del pannello nell'Inspector.");
+            SetStatus(
+                "Assegna tutti i riferimenti del pannello nell'Inspector, " +
+                "compreso Operational Menu Root."
+            );
             return;
         }
 
@@ -77,16 +83,20 @@ public class ExperimentSettingsPanel : MonoBehaviour
             ExperimentSettings settings =
                 await appManager.apiService.GetExperimentSettingsAsync();
 
-            // Non applicare una lettura se nel frattempo l'utente è uscito.
             if (!testTrigger.CanLoadSettings)
             {
-                SetStatus("Rientra nell'hub e premi nuovamente Aggiorna.");
+                SetStatus(
+                    "Rientra nell'hub e premi nuovamente Aggiorna."
+                );
                 return;
             }
 
             if (settings == null)
             {
-                SetStatus("Lettura fallita. Controlla server e connessione, poi ritenta.");
+                SetStatus(
+                    "Lettura fallita. Controlla server e connessione, " +
+                    "poi ritenta."
+                );
                 return;
             }
 
@@ -98,18 +108,35 @@ public class ExperimentSettingsPanel : MonoBehaviour
 
             if (settings.TaskKey == lastCompletedTaskKey)
             {
-                SetStatus("Questo task è già concluso. Aggiorna il numero del task nel database.");
+                SetStatus(
+                    "Questo task è già concluso. " +
+                    "Aggiorna il numero del task nel database."
+                );
                 return;
             }
 
             if (!testLogger.ApplyExperimentSettings(
-                    settings.participantId, settings.condition, settings.taskNumber))
+                    settings.participantId,
+                    settings.condition,
+                    settings.taskNumber))
             {
-                SetStatus("Impossibile applicare la configurazione al logger.");
+                SetStatus(
+                    "Impossibile applicare la configurazione al logger."
+                );
                 return;
             }
 
             loadedSettings = settings;
+
+            bool assistanceEnabled =
+                settings.condition == "HoloLens";
+
+            operationalMenuRoot.SetActive(assistanceEnabled);
+
+            if (assistanceEnabled)
+            {
+                appManager.OpenExperimentCatalog();
+            }
 
             summaryText.text =
                 $"Partecipante: {settings.participantId}\n" +
@@ -123,14 +150,22 @@ public class ExperimentSettingsPanel : MonoBehaviour
             }
 
             taskInstructions.text = settings.taskText;
+
             testTrigger.ShowPreparedTask();
-            SetStatus("Task pronto. Controlla le istruzioni sul carrello.");
+
+            SetStatus(
+                "Task pronto. Controlla le istruzioni sul carrello."
+            );
         }
         catch (Exception exception)
         {
             Debug.LogException(exception, this);
+
             testTrigger.HidePreparedTask();
-            SetStatus("Aggiornamento fallito. Controlla la Console e ritenta.");
+
+            SetStatus(
+                "Aggiornamento fallito. Controlla la Console e ritenta."
+            );
         }
         finally
         {
