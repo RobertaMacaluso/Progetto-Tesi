@@ -20,6 +20,10 @@ public class ExperimentSettingsPanel : MonoBehaviour
     [Header("Menu operativo dell'app")]
     [SerializeField] private GameObject operationalMenuRoot;
 
+    [Header("Indicazioni del magazzino per istanza")]
+    [SerializeField] private GameObject instanceAIndicators;
+    [SerializeField] private GameObject instanceBIndicators;
+
     private ExperimentSettings loadedSettings;
     private string lastCompletedTaskKey = "";
     private bool isLoading;
@@ -65,11 +69,12 @@ public class ExperimentSettingsPanel : MonoBehaviour
 
         if (appManager == null || appManager.apiService == null ||
             testLogger == null || summaryText == null ||
-            taskInstructions == null || operationalMenuRoot == null)
+            taskInstructions == null || operationalMenuRoot == null ||
+            instanceAIndicators == null || instanceBIndicators == null)
         {
             SetStatus(
                 "Assegna tutti i riferimenti del pannello nell'Inspector, " +
-                "compreso Operational Menu Root."
+                "compresi Operational Menu Root e le indicazioni A/B."
             );
             return;
         }
@@ -128,6 +133,19 @@ public class ExperimentSettingsPanel : MonoBehaviour
 
             loadedSettings = settings;
 
+            // Mostra le indicazioni dell'istanza selezionata.
+            // Prima spegniamo l'altro gruppo.
+            if (settings.instance == "A")
+            {
+                instanceBIndicators.SetActive(false);
+                instanceAIndicators.SetActive(true);
+            }
+            else
+            {
+                instanceAIndicators.SetActive(false);
+                instanceBIndicators.SetActive(true);
+            }
+
             bool assistanceEnabled =
                 settings.condition == "HoloLens";
 
@@ -172,7 +190,6 @@ public class ExperimentSettingsPanel : MonoBehaviour
             isLoading = false;
         }
     }
-
     public void NotifyTaskStarted()
     {
         SetStatus("Task in corso.");
