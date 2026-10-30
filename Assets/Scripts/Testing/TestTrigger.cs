@@ -16,6 +16,8 @@ public class TestTrigger : MonoBehaviour
     private bool resetSucceeded = true;
     private bool taskPrepared;
 
+    private bool initialStateReady;
+
     public bool CanLoadSettings =>
         playerInHub && testLogger != null && !testLogger.IsTaskActive &&
         !isStartingTask && !isRestoring && resetSucceeded;
@@ -25,7 +27,7 @@ public class TestTrigger : MonoBehaviour
         HidePreparedTask();
     }
 
-    private async void OnTriggerExit(Collider other)
+    private void OnTriggerExit(Collider other)
     {
         if (!IsPlayer(other))
         {
@@ -34,43 +36,44 @@ public class TestTrigger : MonoBehaviour
 
         playerInHub = false;
 
-        if (testLogger == null || testLogger.IsTaskActive ||
-            isStartingTask || isRestoring || !resetSucceeded || !taskPrepared)
+        if (testLogger == null ||
+            testLogger.IsTaskActive ||
+            isStartingTask ||
+            isRestoring ||
+            !resetSucceeded ||
+            !taskPrepared)
         {
             return;
         }
 
-        if (taskStateReset == null || taskPanel == null ||
+        if (!initialStateReady ||
+            virtualCart == null ||
+            taskPanel == null ||
             !taskPanel.activeInHierarchy)
         {
-            Debug.LogError("[TestTrigger] Assegna reset e pannello.", this);
+            Debug.LogError(
+                "[TestTrigger] Situazione iniziale o task non pronti. " +
+                "Premi Aggiorna nell'hub prima della prova.",
+                this
+            );
+
             return;
         }
 
-        isStartingTask = true;
+        testLogger.StartConfiguredTask();
 
-        try
+        if (!testLogger.IsTaskActive)
         {
-            // Conserva l'acquisizione iniziale già verificata.
-            bool success = await taskStateReset.InitializeAsync(
-                artifactsRoot, virtualCart, cartFollowToggle);
-
-            if (!success || playerInHub || testLogger.IsTaskActive ||
-                !taskPrepared || !taskPanel.activeInHierarchy)
-            {
-                return;
-            }
-
-            testLogger.StartConfiguredTask();
-
-            if (testLogger.IsTaskActive && settingsPanel != null)
-            {
-                settingsPanel.NotifyTaskStarted();
-            }
+            return;
         }
-        finally
+
+        // Registra soltanto i riferimenti per la valutazione finale.
+        // Non scrive eventi di caricamento nel CSV.
+        testLogger.RegisterPreloadedCartArtifacts(virtualCart);
+
+        if (settingsPanel != null)
         {
-            isStartingTask = false;
+            settingsPanel.NotifyTaskStarted();
         }
     }
 
@@ -127,7 +130,9 @@ public class TestTrigger : MonoBehaviour
 
     public void ShowPreparedTask()
     {
-        if (!CanLoadSettings || taskPanel == null)
+        if (!CanLoadSettings ||
+            !initialStateReady ||
+            taskPanel == null)
         {
             return;
         }
@@ -139,5 +144,47 @@ public class TestTrigger : MonoBehaviour
     private bool IsPlayer(Collider other)
     {
         return other.CompareTag("Player");
+    }
+
+    public async System.Threading.Tasks.Task<bool> PrepareInitialStateAsync()
+    {
+        if (!CanLoadSettings)
+        {
+            return false;
+        }
+
+        // La situazione iniziale viene acquisita una sola volta.
+        if (initialStateReady)
+        {
+            return true;
+        }
+
+        if (taskStateReset == null)
+        {
+            Debug.LogError(
+                "[TestTrigger] Assegna Task State Reset.",
+                this
+            );
+
+            return false;
+        }
+
+        isStartingTask = true;
+
+        try
+        {
+            initialStateReady =
+                await taskStateReset.InitializeAsync(
+                    artifactsRoot,
+                    virtualCart,
+                    cartFollowToggle
+                );
+
+            return initialStateReady;
+        }
+        finally
+        {
+            isStartingTask = false;
+        }
     }
 }

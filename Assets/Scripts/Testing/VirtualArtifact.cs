@@ -176,6 +176,7 @@ public class VirtualArtifact : MonoBehaviour
             DetachFromCart();
         }
     }
+
     public void EndManipulation()
     {
         if (!hasStartedManipulation ||
@@ -201,7 +202,7 @@ public class VirtualArtifact : MonoBehaviour
             testLogger.SessionId == manipulationSessionId;
 
         // Una presa iniziata e finita nello stesso carrello
-        // non genera né Manipulation né nuovi eventi operativi.
+        // non genera nuovi eventi.
         if (sameCart)
         {
             releaseCart.AddArtifact(this);
@@ -209,13 +210,32 @@ public class VirtualArtifact : MonoBehaviour
             return;
         }
 
-        // Evita di attribuire una presa iniziata fuori dal test
-        // o nel task precedente al task attualmente attivo.
+        // Le manipolazioni fuori dalla prova non vengono registrate.
         if (!sameExperimentalTask)
         {
             if (releaseCart != null)
             {
                 releaseCart.AddArtifact(this);
+
+                bool loadedBeforeTask =
+                    !manipulationStartedDuringTask &&
+                    testLogger != null &&
+                    !testLogger.IsTaskActive;
+
+                bool isHubPlacementOperation =
+                    operationType == OperationType.Putaway ||
+                    operationType == OperationType.Return;
+
+                if (loadedBeforeTask &&
+                    isHubPlacementOperation &&
+                    currentPhase == OperationPhase.WaitingForCart)
+                {
+                    // Il reperto è pronto per essere depositato
+                    // dopo l'uscita dall'hub.
+                    // Non viene scritto ArtifactLoaded nel CSV.
+                    currentPhase =
+                        OperationPhase.WaitingForPlacement;
+                }
             }
 
             ResetAttemptTiming();
@@ -227,7 +247,8 @@ public class VirtualArtifact : MonoBehaviour
             artifactId,
             firstManipulationStart.Value,
             lastManipulationEnd.Value,
-            transform.position);
+            transform.position
+        );
 
         if (releaseCart != null)
         {
@@ -238,7 +259,6 @@ public class VirtualArtifact : MonoBehaviour
             HandleReleaseOutsideCart();
         }
 
-        // Ogni nuova presa avrà timestamp propri.
         ResetAttemptTiming();
     }
 

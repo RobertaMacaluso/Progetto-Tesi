@@ -1103,7 +1103,7 @@ public class AppManager : MonoBehaviour
 
         //aggiunta a lista locale
         allArtifacts.Add(obj);
-        allArtifacts.Sort((x, y) => x.name.CompareTo(y.name));
+        allArtifacts.Sort((x, y) => int.Parse(x.name).CompareTo(int.Parse(y.name)));
         //SetArtifactsShelf(obj);
 
         //aggiornamento scrollView
@@ -1208,7 +1208,7 @@ public class AppManager : MonoBehaviour
 
         Debug.Log("Artifacts number: " + allArtifacts.Count);
 
-        allArtifacts.Sort((x,y) => x.name.CompareTo(y.name));
+        allArtifacts.Sort((x, y) => int.Parse(x.name).CompareTo(int.Parse(y.name)));
         //allArtifacts.ForEach(x => SetArtifactsShelf(x));
     }
 

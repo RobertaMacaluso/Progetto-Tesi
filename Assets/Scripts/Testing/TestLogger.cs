@@ -151,6 +151,39 @@ public class TestLogger : MonoBehaviour
         Debug.Log($"[TestLogger] Task configurato {currentTask} avviato.");
     }
 
+    public void RegisterPreloadedCartArtifacts(VirtualCart cart)
+    {
+        if (!isTaskActive || cart == null)
+        {
+            return;
+        }
+
+        foreach (VirtualArtifact artifact in cart.Artifacts)
+        {
+            if (artifact == null ||
+                !artifact.gameObject.activeInHierarchy ||
+                artifact.CurrentCart != cart)
+            {
+                continue;
+            }
+
+            bool isHubPlacementOperation =
+                artifact.Operation ==
+                    VirtualArtifact.OperationType.Putaway ||
+                artifact.Operation ==
+                    VirtualArtifact.OperationType.Return;
+
+            if (!isHubPlacementOperation)
+            {
+                continue;
+            }
+
+            // Include il reperto nella valutazione finale,
+            // anche se durante la prova non viene mai depositato.
+            RegisterPlacementArtifact(artifact.ArtifactId);
+        }
+    }
+
     /// <summary>
     /// Creates a new logging session.
     /// </summary>

@@ -1,6 +1,8 @@
+using MixedReality.Toolkit.SpatialManipulation;
 using System;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Animations;
 
 public class ExperimentSettingsPanel : MonoBehaviour
 {
@@ -23,6 +25,9 @@ public class ExperimentSettingsPanel : MonoBehaviour
     [Header("Indicazioni del magazzino per istanza")]
     [SerializeField] private GameObject instanceAIndicators;
     [SerializeField] private GameObject instanceBIndicators;
+
+    [Header("Pannello reperti")]
+    [SerializeField] private GameObject artifactPanel;
 
     private ExperimentSettings loadedSettings;
     private string lastCompletedTaskKey = "";
@@ -70,7 +75,7 @@ public class ExperimentSettingsPanel : MonoBehaviour
         if (appManager == null || appManager.apiService == null ||
             testLogger == null || summaryText == null ||
             taskInstructions == null || operationalMenuRoot == null ||
-            instanceAIndicators == null || instanceBIndicators == null)
+            instanceAIndicators == null || instanceBIndicators == null || artifactPanel == null)
         {
             SetStatus(
                 "Assegna tutti i riferimenti del pannello nell'Inspector, " +
@@ -120,6 +125,31 @@ public class ExperimentSettingsPanel : MonoBehaviour
                 return;
             }
 
+            SetStatus("Preparazione della situazione iniziale...");
+
+            bool initialStateReady =
+                await testTrigger.PrepareInitialStateAsync();
+
+            if (!initialStateReady)
+            {
+                SetStatus(
+                    "Preparazione iniziale fallita. " +
+                    "Completa il setup e controlla che il carrello sia vuoto, " +
+                    "poi premi nuovamente Aggiorna."
+                );
+
+                return;
+            }
+
+            if (!testTrigger.CanLoadSettings)
+            {
+                SetStatus(
+                    "Rientra nell'hub e premi nuovamente Aggiorna."
+                );
+
+                return;
+            }
+
             if (!testLogger.ApplyExperimentSettings(
                     settings.participantId,
                     settings.condition,
@@ -150,6 +180,8 @@ public class ExperimentSettingsPanel : MonoBehaviour
                 settings.condition == "HoloLens";
 
             operationalMenuRoot.SetActive(assistanceEnabled);
+
+            //AttachArtifactPanelToCart();
 
             if (assistanceEnabled)
             {
@@ -190,6 +222,16 @@ public class ExperimentSettingsPanel : MonoBehaviour
             isLoading = false;
         }
     }
+
+    public void AttachArtifactPanelToCart(bool value)
+    {
+        artifactPanel.GetComponent<Follow>().enabled = !value;
+        artifactPanel.GetComponent<SolverHandler>().enabled = !value;
+
+        artifactPanel.GetComponent<ParentConstraint>().enabled = value;
+        artifactPanel.GetComponent<ParentConstraint>().constraintActive = value;
+    }
+
     public void NotifyTaskStarted()
     {
         SetStatus("Task in corso.");
