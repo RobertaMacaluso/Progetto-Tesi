@@ -441,6 +441,10 @@ public class AppManager : MonoBehaviour
         followArtifacts.MaxViewHorizontalDegrees = maxDegrees;
         followArtifacts.MaxViewVerticalDegrees = maxDegrees;
 
+        // per test
+        followArtifacts.enabled = false;
+        A_Menu.artifactsPanel.GetComponentInChildren<SolverHandler>().enabled = false;
+
         // pannello scaffali
         Follow followShelves = shelvesListPanel.GetComponentInChildren<Follow>();
         followShelves.ReorientWhenOutsideParameters = false;
@@ -2268,8 +2272,8 @@ public class AppManager : MonoBehaviour
             );
 
             A_Menu.artifactIndicator.transform.position =
-                shelfDeposit.transform.TransformPoint(localPosition) + 
-                new Vector3(0f, artifact.artifactHeight / 2, 0f);
+                shelfDeposit.transform.TransformPoint(localPosition);
+            //+ new Vector3(0f, artifact.artifactHeight / 2, 0f);
 
             A_Menu.artifactIndicator.transform.rotation =
                 shelfDeposit.transform.rotation * localRotation;
@@ -2277,7 +2281,7 @@ public class AppManager : MonoBehaviour
 
         A_Menu.artifactIndicator.GetComponent<Follow>().enabled = true;
 
-        // scala dell'indicatore
+        /*// scala dell'indicatore
         if (artifact.artifactWidth == 0 || artifact.artifactHeight == 0 || artifact.artifactDepth == 0)
         {
             A_Menu.artifactIndicator.transform.localScale = artifactIndicatorScale * 6f; // metà della grandezza massima
@@ -2309,7 +2313,7 @@ public class AppManager : MonoBehaviour
 
             A_Menu.artifactIndicator.transform.localScale =
                 artifactIndicatorScale * scaleFactor;
-        }
+        }*/
         //A_Menu.artifactIndicator.GetComponent<Follow>().enabled = true;
     }
 
@@ -2328,10 +2332,10 @@ public class AppManager : MonoBehaviour
 
         A_Menu.artifactProp.SetActive(true);
         A_Menu.artifactProp.transform.position = shelfDeposit.transform.position;
-        if (artifact.artifactWidth > 0 && artifact.artifactHeight > 0 && artifact.artifactDepth > 0)
-            A_Menu.artifactProp.transform.localScale = new Vector3(artifact.artifactWidth, artifact.artifactHeight, artifact.artifactDepth);
-        else
-            A_Menu.artifactProp.transform.localScale = new Vector3(0.2f, 0.2f, 0.2f);
+        //if (artifact.artifactWidth > 0 && artifact.artifactHeight > 0 && artifact.artifactDepth > 0)
+        //    A_Menu.artifactProp.transform.localScale = new Vector3(artifact.artifactWidth, artifact.artifactHeight, artifact.artifactDepth);
+        //else
+        //    A_Menu.artifactProp.transform.localScale = new Vector3(0.2f, 0.2f, 0.2f);
         //A_Menu.artifactProp.transform.rotation = shelfDeposit.transform.rotation;
     }
 

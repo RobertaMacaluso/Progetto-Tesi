@@ -225,6 +225,7 @@ public class ExperimentSettingsPanel : MonoBehaviour
 
     public void AttachArtifactPanelToCart(bool value)
     {
+        Debug.Log("Attach");
         artifactPanel.GetComponent<Follow>().enabled = !value;
         artifactPanel.GetComponent<SolverHandler>().enabled = !value;
 
