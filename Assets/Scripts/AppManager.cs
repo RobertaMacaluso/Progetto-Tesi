@@ -1646,8 +1646,20 @@ public class AppManager : MonoBehaviour
         }
     }
 
-    private void ReturnToArtifactList()
+    private void ReturnToArtifactList(bool afterAddingOperation = false)
     {
+        float? scrollToRestore = null;
+
+        if (afterAddingOperation)
+        {
+            MRTKTMPInputField searchField =
+                A_Menu.searchGroup.GetComponentInChildren<MRTKTMPInputField>(true);
+
+            scrollToRestore = string.IsNullOrEmpty(searchField.text)
+                ? A_Menu.artifactScrollView.GetComponent<VirtualizedScrollRectList>().Scroll
+                : 0f;
+        }
+
         isChoosingDestination = false;
         isSelectingTransfer = false;
 
@@ -1689,6 +1701,11 @@ public class AppManager : MonoBehaviour
         }
 
         artifactSelected = null;
+
+        if (scrollToRestore.HasValue)
+        {
+            catalog.RestoreScrollPosition(scrollToRestore.Value);
+        }
 
         catalog.RefreshVisibleButtons();
     }
@@ -2994,7 +3011,7 @@ public class AppManager : MonoBehaviour
             $"{source.name} -> {destination.name}");
 
         artifactScrollViewToBeReset = true;
-        ReturnToArtifactList();
+        ReturnToArtifactList(afterAddingOperation: true);
     }
 
     public void AddPickTask()
@@ -3023,7 +3040,7 @@ public class AppManager : MonoBehaviour
         
         artifactScrollViewToBeReset = true;
         //CreateArtifactScrollView();
-        ReturnToArtifactList();
+        ReturnToArtifactList(afterAddingOperation: true);
     }
 
     public void AddDepositInLastShelfTask()
@@ -3060,7 +3077,7 @@ public class AppManager : MonoBehaviour
             $"{artifact.name} -> {shelfView.data.name}");
 
         artifactScrollViewToBeReset = true;
-        ReturnToArtifactList();
+        ReturnToArtifactList(afterAddingOperation: true);
     }
 
     public void AddDepositTask(StorageContainerView shelfView)
@@ -3083,7 +3100,7 @@ public class AppManager : MonoBehaviour
 
         artifactScrollViewToBeReset = true;
         //CreateArtifactScrollView();
-        ReturnToArtifactList();
+        ReturnToArtifactList(afterAddingOperation: true);
     }
 
     public void RemoveSelectedArtifactFromTask()

@@ -358,6 +358,14 @@ namespace MixedReality.Toolkit.Examples.Demos
             appManager.BackButtonArtifact();
         }
 
+        public void RestoreScrollPosition(float scroll)
+        {
+            animate = false;
+            GetComponent<ScrollRect>().StopMovement();
+            list = GetComponent<VirtualizedScrollRectList>();
+            list.Scroll = scroll;
+        }
+
         public void SetWords(List<GameObject> items)
         {
             list = GetComponent<VirtualizedScrollRectList>();
@@ -381,7 +389,28 @@ namespace MixedReality.Toolkit.Examples.Demos
 
             list.SetItemCount(items.Count);
 
-            GetComponent<ScrollRect>().verticalNormalizedPosition = 1f;
+            ScrollRect scrollRect = GetComponent<ScrollRect>();
+
+            if (CompareTag("Artifact list"))
+            {
+                if (list.ItemCount > 0 && list.ScreenItemCountF > 0f)
+                {
+                    RectTransform content = scrollRect.content;
+                    // Ricava il passo delle righe dalle dimensioni della lista virtualizzata.
+                    float rowHeight = content.rect.height * list.RowsOrColumns /
+                        (list.MaxScroll + list.ScreenItemCountF);
+                    int rowCount = Mathf.CeilToInt(list.ItemCount / (float)list.RowsOrColumns);
+
+                    // SetItemCount conta le celle come righe: conserva il padding e corregge l'altezza.
+                    float extraHeight = (list.ItemCount - rowCount) * rowHeight;
+                    content.SetSizeWithCurrentAnchors(
+                        RectTransform.Axis.Vertical, content.rect.height - extraHeight);
+                }
+
+                RestoreScrollPosition(0f);
+            }
+
+            scrollRect.verticalNormalizedPosition = 1f;
         }
 
         private List<GameObject> GetNextLogicalLevel(GameObject parent)
