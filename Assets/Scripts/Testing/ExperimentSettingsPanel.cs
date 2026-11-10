@@ -1,5 +1,6 @@
 using MixedReality.Toolkit.SpatialManipulation;
 using System;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Animations;
@@ -24,7 +25,6 @@ public class ExperimentSettingsPanel : MonoBehaviour
 
     [Header("Indicazioni del magazzino per istanza")]
     [SerializeField] private GameObject instanceAIndicators;
-    [SerializeField] private GameObject instanceBIndicators;
 
     [Header("Pannello reperti")]
     [SerializeField] private GameObject artifactPanel;
@@ -32,6 +32,8 @@ public class ExperimentSettingsPanel : MonoBehaviour
     private ExperimentSettings loadedSettings;
     private string lastCompletedTaskKey = "";
     private bool isLoading;
+    private string displayedIndicatorInstance = "A";
+    private List<(TMP_Text Text, string InstanceA, string InstanceB)> indicatorLabels;
 
     private void Start()
     {
@@ -75,11 +77,11 @@ public class ExperimentSettingsPanel : MonoBehaviour
         if (appManager == null || appManager.apiService == null ||
             testLogger == null || summaryText == null ||
             taskInstructions == null || operationalMenuRoot == null ||
-            instanceAIndicators == null || instanceBIndicators == null || artifactPanel == null)
+            instanceAIndicators == null || artifactPanel == null)
         {
             SetStatus(
                 "Assegna tutti i riferimenti del pannello nell'Inspector, " +
-                "compresi Operational Menu Root e le indicazioni A/B."
+                "compresi Operational Menu Root e le indicazioni."
             );
             return;
         }
@@ -163,18 +165,8 @@ public class ExperimentSettingsPanel : MonoBehaviour
 
             loadedSettings = settings;
 
-            // Mostra le indicazioni dell'istanza selezionata.
-            // Prima spegniamo l'altro gruppo.
-            if (settings.instance == "A")
-            {
-                instanceBIndicators.SetActive(false);
-                instanceAIndicators.SetActive(true);
-            }
-            else
-            {
-                instanceAIndicators.SetActive(false);
-                instanceBIndicators.SetActive(true);
-            }
+            ApplyIndicatorInstance(settings.instance);
+            instanceAIndicators.SetActive(true);
 
             bool assistanceEnabled =
                 settings.condition == "HoloLens";
@@ -221,6 +213,101 @@ public class ExperimentSettingsPanel : MonoBehaviour
         {
             isLoading = false;
         }
+    }
+
+    private void ApplyIndicatorInstance(string instance)
+    {
+        if (instance == displayedIndicatorInstance)
+        {
+            return;
+        }
+
+        if (indicatorLabels == null)
+        {
+            var labels = new List<(TMP_Text Text, string InstanceA, string InstanceB)>();
+
+            foreach (TMP_Text text in instanceAIndicators.GetComponentsInChildren<TMP_Text>(true))
+            {
+                Transform button = text.transform.parent?.parent?.parent;
+
+                if (text.name != "Text" || button == null ||
+                    (button.name != "Button_Icon" && button.name != "Button_Icon 2"))
+                {
+                    continue;
+                }
+
+                Transform canvas = button.parent;
+
+                if (canvas == null || canvas.parent == null ||
+                    (canvas.name != "Canvas" && canvas.name != "Dir_B"))
+                {
+                    continue;
+                }
+
+                string originalText = text.text;
+                string convertedText = GetInstanceBIndicatorText(originalText, canvas.parent);
+                labels.Add((text, originalText, convertedText));
+            }
+
+            indicatorLabels = labels;
+        }
+
+        foreach (var label in indicatorLabels)
+        {
+            label.Text.text = instance == "A" ? label.InstanceA : label.InstanceB;
+        }
+
+        displayedIndicatorInstance = instance;
+    }
+
+    private static string GetInstanceBIndicatorText(string originalText, Transform sign)
+    {
+        int separator = originalText.IndexOf(' ');
+        string level = originalText.Substring(0, separator);
+        string value = originalText.Substring(separator + 1);
+
+        switch (level)
+        {
+            case "Zone":
+                return "Zone " + GetInstanceBZone(value);
+            case "Zones":
+                string[] zones = Array.ConvertAll(
+                    value.Split(','), zone => GetInstanceBZone(zone.Trim()));
+                return "Zones " + string.Join(", ", zones);
+            case "Aisle":
+                return "Aisle " + (char)('A' + int.Parse(value) - 1);
+            case "Bay":
+                return IsDirectBay(sign)
+                    ? "Bay " + (char)('A' + int.Parse(value) - 1)
+                    : "Bay " + (value[0] - 'A' + 1);
+            case "Bin":
+                return IsDirectBay(sign.parent)
+                    ? "Bin " + (value[0] - 'A' + 1)
+                    : "Bin " + (char)('A' + int.Parse(value) - 1);
+            default:
+                throw new InvalidOperationException(
+                    $"Indicazione non supportata: {originalText}");
+        }
+    }
+
+    private static bool IsDirectBay(Transform bay)
+    {
+        return bay != null && bay.parent != null &&
+               (bay.parent.name == "Zone A" || bay.parent.name == "Zone F");
+    }
+
+    private static string GetInstanceBZone(string zone)
+    {
+        return zone switch
+        {
+            "A" => "4",
+            "B" => "6",
+            "C" => "1",
+            "D" => "5",
+            "E" => "2",
+            "F" => "3",
+            _ => throw new InvalidOperationException($"Zona non supportata: {zone}")
+        };
     }
 
     public void AttachArtifactPanelToCart(bool value)

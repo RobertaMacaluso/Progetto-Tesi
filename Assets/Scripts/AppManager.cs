@@ -89,7 +89,7 @@ public class AppManager : MonoBehaviour
     private readonly string artifactTitle = "Reperto: ";
     private readonly string artifactShelfYes = "Il reperto si trova nello scaffale: ";
     private readonly string artifactShelfNo = "Il reperto non si trova in nessuno scaffale";
-    private readonly string artifactShelfLast = "Riposizionare il reperto nell'utlimo scaffale in cui si trovava";
+    private readonly string artifactShelfLast = "Riposizionare il reperto nell'ultimo scaffale in cui si trovava";
     private readonly string initialDepositText = "Il reperto non è mai stato depositato nel magazzino. Procedere al primo deposito?";
     private readonly string textDeposit = "Deposita reperto in un nuovo scaffale";
     private readonly string initialDepositButtonText = "Deposita reperto in uno scaffale";
